@@ -12,6 +12,10 @@
 .env.test.local
 .env.production.local
 
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
 # misc
 .DS_Store
 *.pem
