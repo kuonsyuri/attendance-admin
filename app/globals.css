@@ -1,0 +1,40 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { font-size: 16px; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP', 'Yu Gothic', sans-serif;
+  color: #1a1a1a;
+  background: #f5f5f3;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+
+/* ===== PRINT ===== */
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { background: white; color: black; font-size: 12px; }
+  .print-container { padding: 20mm; }
+  .print-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .print-subtitle { font-size: 13px; color: #555; margin-bottom: 20px; }
+  .print-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .print-table th, .print-table td {
+    border: 1px solid #ccc; padding: 6px 10px;
+    text-align: left; font-size: 12px;
+  }
+  .print-table th { background: #f0f0f0; font-weight: 600; }
+  .print-report {
+    margin-top: 16px; padding: 12px;
+    border: 1px solid #ccc; border-radius: 4px; white-space: pre-wrap;
+  }
+}
