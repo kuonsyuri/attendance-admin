@@ -5,18 +5,24 @@ import { supabase, AttendanceLog, Store } from '@/lib/supabase';
 
 // ── 定数 ────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  unread:  { label: '未確認',  bg: '#f0f0f0', color: '#888',    border: '#e0e0e0' },
+  unread:  { label: '未確認',   bg: '#f0f0f0', color: '#888',    border: '#e0e0e0' },
   checked: { label: '確認済み', bg: '#dbeafe', color: '#1d4ed8', border: '#bfdbfe' },
-  adopted: { label: '採用済み', bg: '#EAF3DE', color: '#3B6D11', border: '#c3e0a0' },
 } as const;
 type StatusKey = keyof typeof STATUS_CONFIG;
 type TabFilter = 'all' | StatusKey;
+
+const REPORT_TYPE_CONFIG = {
+  daily:  { label: '毎日実績', bg: '#EAF3DE', color: '#3B6D11' },
+  review: { label: '振り返り', bg: '#dbeafe', color: '#1d4ed8' },
+  goal:   { label: '月初目標', bg: '#f3e8ff', color: '#7c3aed' },
+} as const;
 
 // ── スタイル ─────────────────────────────────────────────
 const card: React.CSSProperties = { background: '#fff', border: '1px solid #e8e8e4', borderRadius: '12px', overflow: 'hidden' };
 const thS: React.CSSProperties = { padding: '10px 14px', textAlign: 'left', fontSize: '11px', color: '#888', fontWeight: 500, letterSpacing: '0.04em', borderBottom: '1px solid #e8e8e4', background: '#fafaf8' };
 const tdS: React.CSSProperties = { padding: '11px 14px', fontSize: '13px', color: '#1a1a1a', borderBottom: '1px solid #f0f0ec', verticalAlign: 'middle' };
 const sel: React.CSSProperties = { padding: '6px 10px', border: '1px solid #ddd', borderRadius: '7px', fontSize: '13px', background: '#fff', outline: 'none' };
+const detailCell: React.CSSProperties = { padding: '6px 12px', fontSize: '12px', color: '#555', borderBottom: '1px solid #f0f0ec', whiteSpace: 'nowrap' };
 
 // ── 型 ──────────────────────────────────────────────────
 type DatePick = { year: string; month: string; day: string };
@@ -39,9 +45,18 @@ function fmtDate(iso: string) {
 }
 
 function getStatus(log: AttendanceLog): StatusKey {
-  if (log.report_status === 'adopted') return 'adopted';
   if (log.report_status === 'checked') return 'checked';
   return 'unread';
+}
+
+function ReportTypeBadge({ type }: { type: string | null | undefined }) {
+  const cfg = REPORT_TYPE_CONFIG[type as keyof typeof REPORT_TYPE_CONFIG]
+    || { label: '毎日実績', bg: '#EAF3DE', color: '#3B6D11' };
+  return (
+    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '99px', fontSize: '11px', fontWeight: 500, background: cfg.bg, color: cfg.color }}>
+      {cfg.label}
+    </span>
+  );
 }
 
 // ── 日付ピッカー ──────────────────────────────────────────
@@ -73,6 +88,32 @@ function DatePicker({ value, onChange, label }: { value: DatePick; onChange: (v:
   );
 }
 
+// ── 毎日実績テーブル ──────────────────────────────────────
+function DailyFactTable({ log }: { log: AttendanceLog }) {
+  const subTotal = (log.fact_sub_15 ?? 0) + (log.fact_sub_13 ?? 0) + (log.fact_sub_11 ?? 0);
+  return (
+    <div style={{ marginBottom: '14px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 600, color: '#3B6D11', marginBottom: '6px', letterSpacing: '0.05em' }}>TODAY&apos;S FACT</div>
+      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '12px' }}>
+        <tbody>
+          <tr><td style={detailCell}>新規コース契約</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_new_course ?? 0} 件</td></tr>
+          <tr>
+            <td style={detailCell}>新規サブスク（合計）</td>
+            <td style={{ ...detailCell, fontWeight: 600 }}>{subTotal} 件
+              <span style={{ fontWeight: 400, color: '#888', marginLeft: '6px' }}>
+                （15,000円: {log.fact_sub_15 ?? 0} / 13,000円: {log.fact_sub_13 ?? 0} / 11,000円: {log.fact_sub_11 ?? 0}）
+              </span>
+            </td>
+          </tr>
+          <tr><td style={detailCell}>既存顧客来店</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_existing_customers ?? 0} 件</td></tr>
+          <tr><td style={detailCell}>店販購入</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_shop_sales ?? 0} 件</td></tr>
+          <tr><td style={detailCell}>個人総売上</td><td style={{ ...detailCell, fontWeight: 600 }}>{(log.fact_total_revenue ?? 0).toLocaleString('ja-JP')} 円</td></tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── メインページ ──────────────────────────────────────────
 export default function ReportsPage() {
   const now = new Date();
@@ -80,6 +121,7 @@ export default function ReportsPage() {
   const [dateTo, setDateTo] = useState<DatePick>(fromDate(now.toISOString()));
   const [filterStore, setFilterStore] = useState('');
   const [filterStaff, setFilterStaff] = useState('');
+  const [filterType, setFilterType] = useState('');
   const [tabFilter, setTabFilter] = useState<TabFilter>('all');
   const [logs, setLogs] = useState<AttendanceLog[]>([]);
   const [storeList, setStoreList] = useState<Store[]>([]);
@@ -96,7 +138,7 @@ export default function ReportsPage() {
         .select('*, staff(*), store:stores(*)')
         .gte('punched_at', toISO(dateFrom))
         .lte('punched_at', toISO(dateTo, true))
-        .or('report_fact.not.is.null,report_think.not.is.null,report_action.not.is.null,report_request.not.is.null')
+        .not('report_type', 'is', null)
         .order('punched_at', { ascending: false }),
     ]);
     setStoreList((storeData as Store[]) || []);
@@ -115,22 +157,19 @@ export default function ReportsPage() {
     return Array.from(map.entries());
   }, [logs, filterStore]);
 
-  // 店舗・スタッフフィルター適用後（タブ適用前）
   const filteredLogs = useMemo(() => logs.filter(l => {
     if (filterStore && String(l.store?.id ?? l.staff?.stores?.id) !== filterStore) return false;
     if (filterStaff && String(l.staff_id) !== filterStaff) return false;
+    if (filterType && l.report_type !== filterType) return false;
     return true;
-  }), [logs, filterStore, filterStaff]);
+  }), [logs, filterStore, filterStaff, filterType]);
 
-  // タブ件数（店舗・スタッフフィルター後）
   const counts = useMemo(() => ({
-    all: filteredLogs.length,
-    unread: filteredLogs.filter(l => getStatus(l) === 'unread').length,
+    all:     filteredLogs.length,
+    unread:  filteredLogs.filter(l => getStatus(l) === 'unread').length,
     checked: filteredLogs.filter(l => getStatus(l) === 'checked').length,
-    adopted: filteredLogs.filter(l => getStatus(l) === 'adopted').length,
   }), [filteredLogs]);
 
-  // タブフィルター適用
   const reportLogs = useMemo(() =>
     tabFilter === 'all' ? filteredLogs : filteredLogs.filter(l => getStatus(l) === tabFilter),
     [filteredLogs, tabFilter]);
@@ -143,25 +182,12 @@ export default function ReportsPage() {
     setUpdatingId(null);
   };
 
-  const handleAdopt = async (log: AttendanceLog) => {
-    if (log.report_status === 'adopted') return;
-    if (!confirm('本当に採用しますか？')) return;
-    setUpdatingId(log.id);
-    const adoptedAt = new Date().toISOString();
-    await supabase.from('attendance_logs')
-      .update({ report_status: 'adopted', is_adopted: true, adopted_at: adoptedAt })
-      .eq('id', log.id);
-    setLogs(prev => prev.map(l => l.id === log.id ? { ...l, report_status: 'adopted', is_adopted: true, adopted_at: adoptedAt } : l));
-    setUpdatingId(null);
-  };
-
   const handleStoreChange = (v: string) => { setFilterStore(v); setFilterStaff(''); };
 
   const tabLabels: Record<TabFilter, string> = {
-    all: `全件 (${counts.all})`,
-    unread: `未確認 (${counts.unread})`,
+    all:     `全件 (${counts.all})`,
+    unread:  `未確認 (${counts.unread})`,
     checked: `確認済み (${counts.checked})`,
-    adopted: `採用済み (${counts.adopted})`,
   };
 
   return (
@@ -170,7 +196,7 @@ export default function ReportsPage() {
       <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: 500 }}>日報</h1>
-          <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>FTA-R形式の日報確認・採用管理</p>
+          <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>毎日実績・振り返り・月初目標の確認ができます</p>
         </div>
         <button
           onClick={() => window.print()}
@@ -194,6 +220,12 @@ export default function ReportsPage() {
             <option value="">スタッフ</option>
             {staffOptions.map(([id, name]) => <option key={id} value={String(id)}>{name}</option>)}
           </select>
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} style={{ ...sel, width: '130px' }}>
+            <option value="">日報種別</option>
+            <option value="daily">毎日実績</option>
+            <option value="review">振り返り</option>
+            <option value="goal">月初目標</option>
+          </select>
           <button onClick={fetchData} style={{ marginLeft: 'auto', padding: '7px 20px', background: '#3B6D11', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
             検索
           </button>
@@ -202,7 +234,7 @@ export default function ReportsPage() {
 
       {/* ステータスタブ */}
       <div className="no-print" style={{ display: 'flex', gap: '2px', marginBottom: '16px', borderBottom: '1px solid #e8e8e4' }}>
-        {(['all', 'unread', 'checked', 'adopted'] as TabFilter[]).map(t => (
+        {(['all', 'unread', 'checked'] as TabFilter[]).map(t => (
           <button
             key={t}
             onClick={() => setTabFilter(t)}
@@ -219,7 +251,7 @@ export default function ReportsPage() {
         ))}
       </div>
 
-      {/* メインテーブル（画面表示） */}
+      {/* メインテーブル */}
       <div className="no-print" style={card}>
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#aaa' }}>読み込み中...</div>
@@ -232,6 +264,7 @@ export default function ReportsPage() {
                 <th style={thS}>日付</th>
                 <th style={thS}>店舗</th>
                 <th style={thS}>スタッフ</th>
+                <th style={{ ...thS, textAlign: 'center' }}>種別</th>
                 <th style={{ ...thS, textAlign: 'center' }}>ステータス</th>
                 <th style={{ ...thS, textAlign: 'center', width: '56px' }}>▼</th>
               </tr>
@@ -252,6 +285,9 @@ export default function ReportsPage() {
                       <td style={{ ...tdS, color: '#666', fontSize: '12px' }}>{storeName}</td>
                       <td style={{ ...tdS, fontWeight: 500 }}>{staffName}</td>
                       <td style={{ ...tdS, textAlign: 'center' }}>
+                        <ReportTypeBadge type={log.report_type} />
+                      </td>
+                      <td style={{ ...tdS, textAlign: 'center' }}>
                         <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: '99px', fontSize: '11px', fontWeight: 500, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}>
                           {cfg.label}
                         </span>
@@ -268,40 +304,50 @@ export default function ReportsPage() {
 
                     {expanded && (
                       <tr key={log.id + '_detail'}>
-                        <td colSpan={5} style={{ padding: '0 16px 16px', background: '#fafaf8', borderBottom: '1px solid #e8e8e4' }}>
-                          {/* FTA-R 4セクション */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', paddingTop: '12px' }}>
-                            {[
-                              { label: 'Fact', value: log.report_fact },
-                              { label: 'Think', value: log.report_think },
-                              { label: 'Action', value: log.report_action },
-                              { label: 'Request / Share', value: log.report_request },
-                            ].map(({ label, value }) => (
-                              <div key={label} style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '10px 12px' }}>
-                                <div style={{ fontSize: '10px', color: '#3B6D11', fontWeight: 600, marginBottom: '6px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</div>
-                                <div style={{ fontSize: '13px', color: value ? '#1a1a1a' : '#ccc', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{value || '（未記入）'}</div>
+                        <td colSpan={6} style={{ padding: '16px', background: '#fafaf8', borderBottom: '1px solid #e8e8e4' }}>
+
+                          {/* 毎日実績（全種別共通） */}
+                          <DailyFactTable log={log} />
+
+                          {/* 振り返り */}
+                          {log.report_type === 'review' && (
+                            <div style={{ marginBottom: '14px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: 600, color: '#1d4ed8', marginBottom: '8px', letterSpacing: '0.05em' }}>REVIEW</div>
+                              {[
+                                { label: '上手くできたこと①', value: log.review_good_1 },
+                                { label: '上手くできたこと②', value: log.review_good_2 },
+                                { label: '上手くできたこと③', value: log.review_good_3 },
+                                { label: '達成の障害・懸念', value: log.review_obstacle },
+                                { label: '問いの転換', value: log.review_question },
+                                { label: 'アクションプラン', value: log.review_action_plan },
+                              ].map(({ label, value }) => (
+                                <div key={label} style={{ marginBottom: '10px', background: '#fff', border: '1px solid #e8e8e4', borderRadius: '7px', padding: '10px 12px' }}>
+                                  <div style={{ fontSize: '10px', color: '#888', marginBottom: '4px', fontWeight: 600 }}>{label}</div>
+                                  <div style={{ fontSize: '13px', color: value ? '#1a1a1a' : '#ccc', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{value || '（未記入）'}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 月初目標 */}
+                          {log.report_type === 'goal' && (
+                            <div style={{ marginBottom: '14px' }}>
+                              <div style={{ fontSize: '11px', fontWeight: 600, color: '#7c3aed', marginBottom: '8px', letterSpacing: '0.05em' }}>MONTHLY GOAL</div>
+                              <div style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '7px', padding: '12px 14px', fontSize: '13px', color: '#1a1a1a', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+                                {log.monthly_goal || '（未記入）'}
                               </div>
-                            ))}
-                          </div>
+                            </div>
+                          )}
 
                           {/* 操作ボタン */}
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
                             {status === 'unread' && (
                               <button
                                 onClick={() => handleConfirm(log)}
                                 disabled={isUpdating}
-                                style={{ padding: '6px 16px', border: '1px solid #bfdbfe', borderRadius: '7px', background: '#dbeafe', color: '#1d4ed8', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
+                                style={{ padding: '6px 18px', border: '1px solid #bfdbfe', borderRadius: '7px', background: '#dbeafe', color: '#1d4ed8', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
                               >
-                                {isUpdating ? '...' : '確認'}
-                              </button>
-                            )}
-                            {status !== 'adopted' && (
-                              <button
-                                onClick={() => handleAdopt(log)}
-                                disabled={isUpdating}
-                                style={{ padding: '6px 16px', border: '1px solid #c3e0a0', borderRadius: '7px', background: '#EAF3DE', color: '#3B6D11', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}
-                              >
-                                {isUpdating ? '...' : '採用'}
+                                {isUpdating ? '...' : '✓ 確認済みにする'}
                               </button>
                             )}
                           </div>
@@ -316,7 +362,7 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* 印刷用テンプレート（PDF出力時のみ表示） */}
+      {/* 印刷用 */}
       <div className="print-only" style={{ display: 'none' }}>
         <div className="print-container">
           <p style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>ELAN MARIRE</p>
@@ -324,24 +370,33 @@ export default function ReportsPage() {
           <p className="print-subtitle">出力日時：{now.toLocaleString('ja-JP')}</p>
           {filteredLogs.map(log => {
             const storeName = log.store?.name || log.staff?.stores?.name || '—';
+            const subTotal = (log.fact_sub_15 ?? 0) + (log.fact_sub_13 ?? 0) + (log.fact_sub_11 ?? 0);
             return (
               <div key={log.id} style={{ marginBottom: '28px', pageBreakInside: 'avoid' }}>
                 <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', paddingBottom: '6px', borderBottom: '1px solid #ccc', fontSize: '13px', fontWeight: 600 }}>
                   <span>{fmtDate(log.punched_at)}</span>
                   <span>{log.staff?.name}</span>
                   <span>{storeName}</span>
+                  <span>{REPORT_TYPE_CONFIG[log.report_type as keyof typeof REPORT_TYPE_CONFIG]?.label ?? '毎日実績'}</span>
                 </div>
-                {[
-                  { label: 'Fact', value: log.report_fact },
-                  { label: 'Think', value: log.report_think },
-                  { label: 'Action', value: log.report_action },
-                  { label: 'Request / Share', value: log.report_request },
-                ].map(({ label, value }) => value ? (
-                  <div key={label} style={{ marginBottom: '8px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#555' }}>{label}</span>
-                    <div className="print-report" style={{ marginTop: '4px' }}>{value}</div>
+                <div className="print-report" style={{ fontSize: '12px', lineHeight: 1.8 }}>
+                  <strong>新規コース:{log.fact_new_course ?? 0}件 サブスク:{subTotal}件 既存:{log.fact_existing_customers ?? 0}件 店販:{log.fact_shop_sales ?? 0}件 売上:{(log.fact_total_revenue ?? 0).toLocaleString('ja-JP')}円</strong>
+                </div>
+                {log.report_type === 'review' && (
+                  <div style={{ marginTop: '8px', fontSize: '12px', lineHeight: 1.8 }}>
+                    <div><strong>【上手くできたこと①】</strong>{log.review_good_1}</div>
+                    <div><strong>【上手くできたこと②】</strong>{log.review_good_2}</div>
+                    <div><strong>【上手くできたこと③】</strong>{log.review_good_3}</div>
+                    <div><strong>【障害・懸念】</strong>{log.review_obstacle}</div>
+                    <div><strong>【問いの転換】</strong>{log.review_question}</div>
+                    <div><strong>【アクションプラン】</strong>{log.review_action_plan}</div>
                   </div>
-                ) : null)}
+                )}
+                {log.report_type === 'goal' && (
+                  <div style={{ marginTop: '8px', fontSize: '12px', lineHeight: 1.8 }}>
+                    <strong>【今月の目標】</strong>{log.monthly_goal}
+                  </div>
+                )}
               </div>
             );
           })}

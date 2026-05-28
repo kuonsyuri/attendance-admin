@@ -59,18 +59,28 @@ export type AttendanceLog = {
   lat: number;
   lng: number;
   punched_at: string;
-  report_work: string | null;
-  report_notice: string | null;
-  report_improve: string | null;
-  report_fact: string | null;
-  report_think: string | null;
-  report_action: string | null;
-  report_request: string | null;
   is_stamped: boolean;
   stamped_at: string | null;
-  is_adopted: boolean;
-  adopted_at: string | null;
   report_status: string | null;
+  // Phase 9: 新日報形式
+  report_type?: 'daily' | 'review' | 'goal' | null;
+  // 毎日実績
+  fact_new_course?: number | null;
+  fact_sub_15?: number | null;
+  fact_sub_13?: number | null;
+  fact_sub_11?: number | null;
+  fact_existing_customers?: number | null;
+  fact_shop_sales?: number | null;
+  fact_total_revenue?: number | null;
+  // 振り返り
+  review_good_1?: string | null;
+  review_good_2?: string | null;
+  review_good_3?: string | null;
+  review_obstacle?: string | null;
+  review_question?: string | null;
+  review_action_plan?: string | null;
+  // 月初目標
+  monthly_goal?: string | null;
   staff?: Staff & { stores?: Store };
   store?: Store;
 };
