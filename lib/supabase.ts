@@ -45,7 +45,10 @@ export type PendingStaff = {
   id: number;
   line_user_id: string;
   display_name: string;
+  picture_url: string | null;
+  status: string;
   created_at: string;
+  updated_at: string | null;
 };
 
 export type AttendanceLog = {

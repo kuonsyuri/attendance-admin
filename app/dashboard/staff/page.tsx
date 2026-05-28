@@ -15,9 +15,10 @@ const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', border: '
 const lbl: React.CSSProperties = { display: 'block', fontSize: '11px', color: '#666', fontWeight: 500, marginBottom: '4px' };
 
 // ── 型 ──────────────────────────────────────────────────
-type EditForm = { name: string; role: string; storeIds: number[]; hiredYear: string; memo: string };
-type AddForm  = { name: string; role: string; storeIds: number[]; memo: string };
-type Expansion = { id: number; mode: 'view' | 'edit' } | null;
+type EditForm     = { name: string; role: string; storeIds: number[]; hiredYear: string; memo: string };
+type AddForm      = { name: string; role: string; storeIds: number[]; memo: string };
+type ApprovalForm = { name: string; role: string; storeIds: number[] };
+type Expansion    = { id: number; mode: 'view' | 'edit' } | null;
 
 // ── ヘルパー ─────────────────────────────────────────────
 function getStoreNames(s: Staff): string {
@@ -45,12 +46,12 @@ function StoreCheckboxes({ storeList, ids, onChange }: { storeList: Store[]; ids
 
 // ── メインページ ──────────────────────────────────────────
 export default function StaffPage() {
-  const [staffList, setStaffList]   = useState<Staff[]>([]);
+  const [staffList, setStaffList]     = useState<Staff[]>([]);
   const [pendingList, setPendingList] = useState<PendingStaff[]>([]);
-  const [storeList, setStoreList]   = useState<Store[]>([]);
+  const [storeList, setStoreList]     = useState<Store[]>([]);
   const [adoptCounts, setAdoptCounts] = useState<Map<number, number>>(new Map());
-  const [loading, setLoading]       = useState(true);
-  const [tab, setTab]               = useState<'staff' | 'pending'>('staff');
+  const [loading, setLoading]         = useState(true);
+  const [tab, setTab]                 = useState<'staff' | 'pending'>('staff');
 
   const [filterStore,   setFilterStore]   = useState('');
   const [filterRole,    setFilterRole]    = useState('');
@@ -66,11 +67,17 @@ export default function StaffPage() {
   const [addForm, setAddForm] = useState<AddForm>({ name: '', role: '', storeIds: [], memo: '' });
   const [saving,  setSaving]  = useState(false);
 
+  // 承認モーダル用
+  const [approvalTarget, setApprovalTarget] = useState<PendingStaff | null>(null);
+  const [approvalForm,   setApprovalForm]   = useState<ApprovalForm>({ name: '', role: '', storeIds: [] });
+  const [approving,      setApproving]      = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [{ data: sData }, { data: pData }, { data: stData }, { data: adoptData }] = await Promise.all([
       supabase.from('staff').select('*, staff_stores(*, stores(*))').order('name'),
-      supabase.from('pending_staff').select('*').order('created_at', { ascending: false }),
+      // status='pending' のみ表示
+      supabase.from('pending_staff').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
       supabase.from('stores').select('*').order('name'),
       supabase.from('attendance_logs').select('staff_id').eq('is_adopted', true),
     ]);
@@ -141,7 +148,7 @@ export default function StaffPage() {
     setSaving(false); setExpansion(null); await fetchData();
   };
 
-  // ── 登録 ─────────────────────────────────────────────────
+  // ── 手動登録 ─────────────────────────────────────────────
   const handleAdd = async () => {
     if (!addForm.name) return alert('名前は必須です');
     if (addForm.storeIds.length === 0) return alert('店舗を選択してください');
@@ -155,21 +162,51 @@ export default function StaffPage() {
     setSaving(false); setShowAdd(false); setAddForm({ name: '', role: '', storeIds: [], memo: '' }); await fetchData();
   };
 
-  // ── 承認 ─────────────────────────────────────────────────
-  const approvePending = async (p: PendingStaff) => {
-    const sid = storeList[0]?.id;
-    if (!sid) return alert('先に店舗を登録してください');
-    const { data } = await supabase.from('staff')
-      .insert({ line_user_id: p.line_user_id, name: p.display_name, store_id: sid, role: '' })
+  // ── LINE申請：承認モーダルを開く ──────────────────────────
+  const openApproval = (p: PendingStaff) => {
+    setApprovalTarget(p);
+    setApprovalForm({ name: p.display_name, role: '', storeIds: [] });
+  };
+
+  // ── LINE申請：承認確定 ────────────────────────────────────
+  const confirmApproval = async () => {
+    if (!approvalTarget) return;
+    if (!approvalForm.name) return alert('名前は必須です');
+    if (approvalForm.storeIds.length === 0) return alert('店舗を選択してください');
+    setApproving(true);
+
+    const { data, error } = await supabase.from('staff')
+      .insert({
+        line_user_id: approvalTarget.line_user_id,
+        name: approvalForm.name,
+        role: approvalForm.role,
+        store_id: approvalForm.storeIds[0],
+      })
       .select('id').single();
-    if (data?.id) await supabase.from('staff_stores').insert({ staff_id: data.id, store_id: sid });
-    await supabase.from('pending_staff').delete().eq('id', p.id);
+
+    if (error || !data) {
+      setApproving(false);
+      return alert('登録に失敗しました: ' + (error?.message || ''));
+    }
+
+    for (const sid of approvalForm.storeIds)
+      await supabase.from('staff_stores').insert({ staff_id: data.id, store_id: sid });
+
+    await supabase.from('pending_staff')
+      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .eq('id', approvalTarget.id);
+
+    setApproving(false);
+    setApprovalTarget(null);
     await fetchData();
   };
 
+  // ── LINE申請：却下（削除ではなくstatus変更） ──────────────
   const rejectPending = async (p: PendingStaff) => {
-    if (!confirm(`「${p.display_name}」の申請を削除しますか？`)) return;
-    await supabase.from('pending_staff').delete().eq('id', p.id);
+    if (!confirm(`「${p.display_name}」の申請を却下しますか？`)) return;
+    await supabase.from('pending_staff')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', p.id);
     await fetchData();
   };
 
@@ -345,32 +382,60 @@ export default function StaffPage() {
         </>
       )}
 
-      {/* ── 申請タブ ── */}
+      {/* ── LINE申請タブ ── */}
       {tab === 'pending' && (
         <div style={card}>
           {loading ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#aaa' }}>読み込み中...</div>
           ) : pendingList.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: '#aaa' }}>申請中のスタッフはいません</div>
+            <div style={{ padding: '60px 40px', textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>📱</div>
+              <div style={{ color: '#aaa', fontSize: '14px' }}>申請中のスタッフはいません</div>
+              <div style={{ color: '#bbb', fontSize: '12px', marginTop: '6px' }}>LINEで友達追加すると自動的にここに表示されます</div>
+            </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
+                  <th style={{ ...thS, width: '48px' }}></th>
                   <th style={thS}>表示名</th>
                   <th style={thS}>LINE ID</th>
                   <th style={thS}>申請日時</th>
-                  <th style={{ ...thS, width: '160px' }}></th>
+                  <th style={{ ...thS, width: '180px', textAlign: 'right' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {pendingList.map(p => (
                   <tr key={p.id}>
+                    <td style={{ ...tdS, textAlign: 'center' }}>
+                      {p.picture_url ? (
+                        <img
+                          src={p.picture_url}
+                          alt={p.display_name}
+                          style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e8e8e4' }}
+                        />
+                      ) : (
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#EAF3DE', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
+                          👤
+                        </div>
+                      )}
+                    </td>
                     <td style={{ ...tdS, fontWeight: 500 }}>{p.display_name}</td>
                     <td style={{ ...tdS, fontSize: '11px', color: '#aaa', fontFamily: 'monospace' }}>{p.line_user_id.slice(0, 16)}...</td>
                     <td style={{ ...tdS, color: '#888', fontSize: '12px' }}>{new Date(p.created_at).toLocaleString('ja-JP')}</td>
                     <td style={{ ...tdS, textAlign: 'right' }}>
-                      <button onClick={() => approvePending(p)} style={{ padding: '4px 12px', border: '1px solid #c3e0a0', borderRadius: '6px', background: '#EAF3DE', color: '#3B6D11', fontSize: '11px', cursor: 'pointer', fontWeight: 500 }}>承認</button>
-                      <button onClick={() => rejectPending(p)} style={{ marginLeft: '6px', padding: '4px 12px', border: '1px solid #f5c6c6', borderRadius: '6px', background: '#fff', color: '#c0392b', fontSize: '11px', cursor: 'pointer' }}>削除</button>
+                      <button
+                        onClick={() => openApproval(p)}
+                        style={{ padding: '4px 14px', border: '1px solid #c3e0a0', borderRadius: '6px', background: '#EAF3DE', color: '#3B6D11', fontSize: '11px', cursor: 'pointer', fontWeight: 500 }}
+                      >
+                        承認
+                      </button>
+                      <button
+                        onClick={() => rejectPending(p)}
+                        style={{ marginLeft: '6px', padding: '4px 12px', border: '1px solid #f5c6c6', borderRadius: '6px', background: '#fff', color: '#c0392b', fontSize: '11px', cursor: 'pointer' }}
+                      >
+                        却下
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -380,7 +445,7 @@ export default function StaffPage() {
         </div>
       )}
 
-      {/* ── 登録モーダル ── */}
+      {/* ── 手動登録モーダル ── */}
       {showAdd && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setShowAdd(false); }}>
           <div style={{ background: '#fff', borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -399,6 +464,68 @@ export default function StaffPage() {
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
               <button onClick={() => setShowAdd(false)} style={{ padding: '8px 18px', border: '1px solid #ddd', borderRadius: '7px', background: '#fff', fontSize: '13px', cursor: 'pointer', color: '#555' }}>キャンセル</button>
               <button onClick={handleAdd} disabled={saving} style={{ padding: '8px 18px', background: '#3B6D11', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>{saving ? '登録中...' : '登録する'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── LINE承認モーダル ── */}
+      {approvalTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setApprovalTarget(null); }}>
+          <div style={{ background: '#fff', borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
+            {/* ヘッダー */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              {approvalTarget.picture_url ? (
+                <img src={approvalTarget.picture_url} alt={approvalTarget.display_name} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#EAF3DE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>👤</div>
+              )}
+              <div>
+                <div style={{ fontSize: '15px', fontWeight: 600 }}>{approvalTarget.display_name}</div>
+                <div style={{ fontSize: '11px', color: '#aaa', fontFamily: 'monospace', marginTop: '2px' }}>{approvalTarget.line_user_id.slice(0, 20)}...</div>
+              </div>
+            </div>
+
+            <h2 style={{ fontSize: '14px', fontWeight: 500, marginBottom: '16px', color: '#3B6D11' }}>📋 スタッフ情報を入力して承認</h2>
+
+            <span style={lbl}>スタッフ名 *</span>
+            <input
+              value={approvalForm.name}
+              onChange={e => setApprovalForm({ ...approvalForm, name: e.target.value })}
+              style={inp}
+            />
+
+            <span style={lbl}>役職</span>
+            <select
+              value={approvalForm.role}
+              onChange={e => setApprovalForm({ ...approvalForm, role: e.target.value })}
+              style={{ ...sel, width: '100%', marginBottom: '10px' }}
+            >
+              <option value="">選択してください</option>
+              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+
+            <span style={lbl}>店舗 * <span style={{ fontWeight: 400, color: '#aaa' }}>（複数選択可）</span></span>
+            <StoreCheckboxes
+              storeList={storeList}
+              ids={approvalForm.storeIds}
+              onChange={ids => setApprovalForm({ ...approvalForm, storeIds: ids })}
+            />
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
+              <button
+                onClick={() => setApprovalTarget(null)}
+                style={{ padding: '8px 18px', border: '1px solid #ddd', borderRadius: '7px', background: '#fff', fontSize: '13px', cursor: 'pointer', color: '#555' }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={confirmApproval}
+                disabled={approving}
+                style={{ padding: '8px 20px', background: '#3B6D11', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+              >
+                {approving ? '承認中...' : '✓ 承認する'}
+              </button>
             </div>
           </div>
         </div>
