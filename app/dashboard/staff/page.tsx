@@ -175,26 +175,49 @@ export default function StaffPage() {
     if (approvalForm.storeIds.length === 0) return alert('店舗を選択してください');
     setApproving(true);
 
-    const { data, error } = await supabase.from('staff')
-      .insert({
-        line_user_id: approvalTarget.line_user_id,
-        name: approvalForm.name,
-        role: approvalForm.role,
-        store_id: approvalForm.storeIds[0],
-      })
-      .select('id').single();
+    // 承認時の値をローカルにコピー（非同期中のstate変化を防ぐ）
+    const lineUserId = approvalTarget.line_user_id;
+    const pendingId  = approvalTarget.id;
+    const { name, role, storeIds } = approvalForm;
 
-    if (error || !data) {
+    // 1. staffテーブルにINSERT（.select()なし → RLSの影響を受けない）
+    const { error: staffError } = await supabase.from('staff').insert({
+      line_user_id: lineUserId,
+      name,
+      role,
+      store_id: storeIds[0],
+    });
+
+    if (staffError) {
       setApproving(false);
-      return alert('登録に失敗しました: ' + (error?.message || ''));
+      return alert('スタッフ登録に失敗しました: ' + staffError.message);
     }
 
-    for (const sid of approvalForm.storeIds)
-      await supabase.from('staff_stores').insert({ staff_id: data.id, store_id: sid });
+    // 2. 挿入したスタッフのIDをline_user_idで取得
+    const { data: newStaff, error: fetchError } = await supabase
+      .from('staff')
+      .select('id')
+      .eq('line_user_id', lineUserId)
+      .order('id', { ascending: false })
+      .limit(1)
+      .single();
 
+    if (fetchError || !newStaff) {
+      setApproving(false);
+      return alert('スタッフIDの取得に失敗しました: ' + (fetchError?.message || ''));
+    }
+
+    // 3. staff_storesに全選択店舗を登録
+    await Promise.all(
+      storeIds.map(sid =>
+        supabase.from('staff_stores').insert({ staff_id: newStaff.id, store_id: sid })
+      )
+    );
+
+    // 4. pending_staffのstatusをapprovedに更新
     await supabase.from('pending_staff')
       .update({ status: 'approved', updated_at: new Date().toISOString() })
-      .eq('id', approvalTarget.id);
+      .eq('id', pendingId);
 
     setApproving(false);
     setApprovalTarget(null);
