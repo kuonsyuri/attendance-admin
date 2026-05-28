@@ -8,10 +8,10 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// LINE署名検証（HMAC-SHA256）
+// LINE署名検証（HMAC-SHA256 Base64 — プレフィックスなし）
 function verifySignature(rawBody: string, signature: string, secret: string): boolean {
   const hash = crypto.createHmac('sha256', secret).update(rawBody).digest('base64');
-  return `sha256=${hash}` === signature;
+  return hash === signature;
 }
 
 // LINEプロフィール取得
