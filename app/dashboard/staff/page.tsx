@@ -72,6 +72,9 @@ export default function StaffPage() {
   const [approvalForm,   setApprovalForm]   = useState<ApprovalForm>({ name: '', role: '', storeIds: [] });
   const [approving,      setApproving]      = useState(false);
 
+  // LINEフォロワー同期
+  const [syncing, setSyncing] = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     const [{ data: sData }, { data: pData }, { data: stData }, { data: adoptData }] = await Promise.all([
@@ -222,6 +225,30 @@ export default function StaffPage() {
     setApproving(false);
     setApprovalTarget(null);
     await fetchData();
+  };
+
+  // ── LINEフォロワー一括同期 ────────────────────────────────
+  const syncLineFollowers = async () => {
+    if (!confirm('LINEの全フォロワーを申請リストに同期しますか？\n既登録スタッフはスキップされます。')) return;
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/sync-line-followers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: process.env.NEXT_PUBLIC_APP_PASSWORD ?? '' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert('同期エラー: ' + (data.error || res.status));
+      } else {
+        alert(`同期完了！\nフォロワー: ${data.followers}名\n新規追加: ${data.added}名\nスキップ: ${data.skipped}名`);
+        await fetchData();
+      }
+    } catch {
+      alert('同期中にエラーが発生しました');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   // ── LINE申請：却下（削除ではなくstatus変更） ──────────────
@@ -407,6 +434,18 @@ export default function StaffPage() {
 
       {/* ── LINE申請タブ ── */}
       {tab === 'pending' && (
+        <>
+          {/* 同期ボタン */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+            <button
+              onClick={syncLineFollowers}
+              disabled={syncing}
+              style={{ padding: '7px 16px', border: '1px solid #ddd', borderRadius: '7px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#555', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              {syncing ? '同期中...' : '📲 LINEフォロワーを同期'}
+            </button>
+          </div>
+
         <div style={card}>
           {loading ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#aaa' }}>読み込み中...</div>
@@ -466,6 +505,7 @@ export default function StaffPage() {
             </table>
           )}
         </div>
+        </>
       )}
 
       {/* ── 手動登録モーダル ── */}
