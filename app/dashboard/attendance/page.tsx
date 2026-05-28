@@ -98,7 +98,7 @@ function buildGroups(logs: AttendanceLog[]): DayGroup[] {
     if (log.type === 'clock_out') g.clockOuts.push(log);
     if (log.type === 'meeting_start') g.mtgStarts.push(log);
     if (log.type === 'meeting_end') g.mtgEnds.push(log);
-    if (log.report_fact || log.report_think || log.report_action || log.report_request) {
+    if (log.report_type != null) {
       g.reportLog = log;
       g.reportStatus = log.report_status;
     }
@@ -323,8 +323,8 @@ export default function AttendancePage() {
                   const expanded = expandedKey === g.key;
                   const clockOut1 = g.clockOuts[0];
                   const clockOut2 = g.clockOuts[1];
-                  const hasRep = !!(g.reportLog?.report_fact || g.reportLog?.report_think || g.reportLog?.report_action || g.reportLog?.report_request);
-                  const isChecked = g.reportStatus === 'checked' || g.reportStatus === 'adopted';
+                  const hasRep = g.reportLog?.report_type != null;
+                  const isChecked = g.reportStatus === 'checked';
                   return (
                     <>
                       <tr key={g.key}>
@@ -366,18 +366,48 @@ export default function AttendancePage() {
                       {expanded && hasRep && (
                         <tr key={g.key + '_r'}>
                           <td colSpan={10} style={{ padding: '0 16px 16px', background: '#fafaf8', borderBottom: '1px solid #e8e8e4' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', paddingTop: '12px' }}>
-                              {[
-                                { label: 'Fact', value: g.reportLog?.report_fact },
-                                { label: 'Think', value: g.reportLog?.report_think },
-                                { label: 'Action', value: g.reportLog?.report_action },
-                                { label: 'Request / Share', value: g.reportLog?.report_request },
-                              ].map(({ label, value }) => (
-                                <div key={label} style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '10px 12px' }}>
-                                  <div style={{ fontSize: '10px', color: '#3B6D11', fontWeight: 600, marginBottom: '6px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{label}</div>
-                                  <div style={{ fontSize: '13px', color: value ? '#1a1a1a' : '#ccc', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{value || '（未記入）'}</div>
+                            <div style={{ paddingTop: '12px', fontSize: '12px', color: '#888' }}>
+                              {g.reportLog?.report_type === 'goal' && (
+                                <div style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '10px 12px' }}>
+                                  <div style={{ fontSize: '10px', color: '#6B21A8', fontWeight: 600, marginBottom: '6px' }}>🎯 今月の目標</div>
+                                  <div style={{ fontSize: '13px', color: '#1a1a1a', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{g.reportLog?.monthly_goal || '（未記入）'}</div>
                                 </div>
-                              ))}
+                              )}
+                              {(g.reportLog?.report_type === 'daily' || g.reportLog?.report_type === 'review') && (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: g.reportLog?.report_type === 'review' ? '10px' : '0' }}>
+                                  {[
+                                    { label: '新規コース', value: g.reportLog?.fact_new_course },
+                                    { label: 'サブスク15', value: g.reportLog?.fact_sub_15 },
+                                    { label: 'サブスク13', value: g.reportLog?.fact_sub_13 },
+                                    { label: 'サブスク11', value: g.reportLog?.fact_sub_11 },
+                                    { label: '既存顧客', value: g.reportLog?.fact_existing_customers },
+                                    { label: '店販', value: g.reportLog?.fact_shop_sales },
+                                    { label: '総売上', value: g.reportLog?.fact_total_revenue != null ? `¥${g.reportLog.fact_total_revenue.toLocaleString('ja-JP')}` : null },
+                                  ].map(({ label, value }) => (
+                                    <div key={label} style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '8px 10px' }}>
+                                      <div style={{ fontSize: '10px', color: '#3B6D11', fontWeight: 600, marginBottom: '4px' }}>{label}</div>
+                                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a' }}>{value ?? 0}{typeof value === 'number' ? '件' : ''}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {g.reportLog?.report_type === 'review' && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                  {[
+                                    { label: 'よかったこと①', value: g.reportLog?.review_good_1 },
+                                    { label: 'よかったこと②', value: g.reportLog?.review_good_2 },
+                                    { label: 'よかったこと③', value: g.reportLog?.review_good_3 },
+                                    { label: '障害・うまくいかなかったこと', value: g.reportLog?.review_obstacle },
+                                    { label: '質問', value: g.reportLog?.review_question },
+                                    { label: 'アクションプラン', value: g.reportLog?.review_action_plan },
+                                  ].map(({ label, value }) => (
+                                    <div key={label} style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '8px 10px' }}>
+                                      <div style={{ fontSize: '10px', color: '#1D4ED8', fontWeight: 600, marginBottom: '4px' }}>{label}</div>
+                                      <div style={{ fontSize: '12px', color: value ? '#1a1a1a' : '#ccc', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{value || '（未記入）'}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </td>
                         </tr>

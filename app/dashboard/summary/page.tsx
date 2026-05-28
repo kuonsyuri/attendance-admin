@@ -18,7 +18,7 @@ type StaffSummary = {
   workDays: number;
   totalMinutes: number;
   stampedDays: number;
-  reports: { date: string; work: string; notice: string; improve: string }[];
+  reports: { date: string; reportType: string; summary: string }[];
   aiSummary?: string;
   summarizing?: boolean;
 };
@@ -107,14 +107,27 @@ export default function SummaryPage() {
       for (const [date, dayLogs] of Array.from(entry.logs.entries())) {
         totalMinutes += calcMinutes(dayLogs);
         if (dayLogs.some((l) => l.is_stamped)) stampedDays++;
-        const reportLog = dayLogs.find((l) => l.report_work || l.report_notice || l.report_improve);
+        const reportLog = dayLogs.find((l) => l.report_type != null);
         if (reportLog) {
-          reports.push({
-            date,
-            work: reportLog.report_work || '',
-            notice: reportLog.report_notice || '',
-            improve: reportLog.report_improve || '',
-          });
+          const rt = reportLog.report_type || 'daily';
+          let summary = '';
+          if (rt === 'goal') {
+            summary = `月初目標: ${reportLog.monthly_goal || '（未記入）'}`;
+          } else if (rt === 'daily') {
+            summary = [
+              `新規コース: ${reportLog.fact_new_course ?? 0}件`,
+              `サブスク合計: ${((reportLog.fact_sub_15 ?? 0) + (reportLog.fact_sub_13 ?? 0) + (reportLog.fact_sub_11 ?? 0))}件`,
+              `既存顧客: ${reportLog.fact_existing_customers ?? 0}件`,
+              `総売上: ${reportLog.fact_total_revenue != null ? `¥${reportLog.fact_total_revenue.toLocaleString('ja-JP')}` : '未入力'}`,
+            ].join(' / ');
+          } else if (rt === 'review') {
+            summary = [
+              `よかったこと①: ${reportLog.review_good_1 || ''}`,
+              `よかったこと②: ${reportLog.review_good_2 || ''}`,
+              `アクションプラン: ${reportLog.review_action_plan || ''}`,
+            ].filter(s => s).join('\n');
+          }
+          reports.push({ date, reportType: rt, summary });
         }
       }
 
@@ -142,7 +155,7 @@ export default function SummaryPage() {
     const { label } = getRange();
 
     const reportText = target.reports.map((r) =>
-      `【${r.date}】\n業務内容: ${r.work || '（未記入）'}\n報告事項: ${r.notice || '（未記入）'}\n改善案: ${r.improve || '（未記入）'}`
+      `【${r.date}（${r.reportType}）】\n${r.summary}`
     ).join('\n\n');
 
     const prompt = `以下は美容サロンスタッフ「${target.staffName}」の${label}の日報です。\n出勤日数: ${target.workDays}日 / 合計勤務: ${fmtDuration(target.totalMinutes)}\n\n${reportText}\n\n上記を200字以内で要約してください。業務の傾向、改善提案への対応、特記事項を簡潔にまとめてください。`;

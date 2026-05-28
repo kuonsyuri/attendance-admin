@@ -98,9 +98,9 @@ function buildStats(logs: AttendanceLog[]): StaffStat[] {
         return sum + (diff > 0 ? Math.round(diff / 60000) : 0);
       }, 0);
 
-      const reports = dayLogs.filter((l: AttendanceLog) => l.report_fact || l.report_think || l.report_action || l.report_request);
+      const reports = dayLogs.filter((l: AttendanceLog) => l.report_type != null);
       reportCount += reports.length;
-      adoptedCount += reports.filter((l: AttendanceLog) => l.is_adopted).length;
+      adoptedCount += reports.filter((l: AttendanceLog) => l.report_status === 'checked').length;
     }
 
     result.push({
@@ -233,7 +233,7 @@ export default function AnalyticsPage() {
     <div style={{ padding: '28px 32px' }}>
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '20px', fontWeight: 500 }}>分析</h1>
-        <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>期間別のスタッフパフォーマンス・採択ランキング</p>
+        <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>期間別のスタッフパフォーマンス・日報確認ランキング</p>
       </div>
 
       {/* 検索バー */}
@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
             {staffOptions.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
           </select>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '12px', color: '#888' }}>採択数</span>
+            <span style={{ fontSize: '12px', color: '#888' }}>確認済み数</span>
             <input type="number" min={0} placeholder="0" value={filterAdopted} onChange={e => setFilterAdopted(e.target.value)} style={{ ...sel, width: '60px' }} />
             <span style={{ fontSize: '12px', color: '#888' }}>以上</span>
           </div>
@@ -276,8 +276,8 @@ export default function AnalyticsPage() {
           { label: '稼働時間', value: fmtHours(total.workMinutes) },
           { label: 'MTG回数', value: `${total.mtgCount}回` },
           { label: 'MTG時間', value: fmtHours(total.mtgMinutes) },
-          { label: '採択率', value: `${overallRate}%` },
-          { label: '採択数', value: `${total.adoptedCount}件`, highlight: true },
+          { label: '確認率', value: `${overallRate}%` },
+          { label: '確認済み数', value: `${total.adoptedCount}件`, highlight: true },
         ].map(c => (
           <div key={c.label} style={{ background: '#fff', border: `1px solid ${c.highlight ? '#c3e0a0' : '#e8e8e4'}`, borderRadius: '10px', padding: '14px 16px' }}>
             <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>{c.label}</div>
@@ -303,8 +303,8 @@ export default function AnalyticsPage() {
                 <th style={{ ...thS, textAlign: 'center' }}>稼働時間</th>
                 <th style={{ ...thS, textAlign: 'center' }}>MTG回数</th>
                 <th style={{ ...thS, textAlign: 'center' }}>MTG時間</th>
-                <th style={{ ...thS, textAlign: 'center', color: '#3B6D11' }}>採択数</th>
-                <th style={{ ...thS, textAlign: 'center' }}>採択率</th>
+                <th style={{ ...thS, textAlign: 'center', color: '#3B6D11' }}>確認済み数</th>
+                <th style={{ ...thS, textAlign: 'center' }}>確認率</th>
               </tr>
             </thead>
             <tbody>
