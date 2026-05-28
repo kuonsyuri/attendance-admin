@@ -129,17 +129,24 @@ export default function StaffPage() {
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`選択した${selectedIds.size}名を削除しますか？\n※ 出退勤ログも含めて完全に削除されます。`)) return;
-    const errors: string[] = [];
-    for (const id of Array.from(selectedIds)) {
-      // FK 制約順に削除: attendance_logs → staff_stores → staff
-      const r1 = await supabase.from('attendance_logs').delete().eq('staff_id', id);
-      if (r1.error) { errors.push(`attendance_logs(${id}): ${r1.error.message}`); continue; }
-      const r2 = await supabase.from('staff_stores').delete().eq('staff_id', id);
-      if (r2.error) { errors.push(`staff_stores(${id}): ${r2.error.message}`); continue; }
-      const r3 = await supabase.from('staff').delete().eq('id', id);
-      if (r3.error) { errors.push(`staff(${id}): ${r3.error.message}`); }
+    try {
+      const res = await fetch('/api/delete-staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: process.env.NEXT_PUBLIC_APP_PASSWORD ?? '',
+          staffIds: Array.from(selectedIds),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        alert('削除に失敗しました:\n' + (data.errors?.join('\n') || data.error || `HTTP ${res.status}`));
+        return;
+      }
+    } catch {
+      alert('削除リクエストに失敗しました。再試行してください。');
+      return;
     }
-    if (errors.length > 0) alert('一部の削除に失敗しました:\n' + errors.join('\n'));
     setDeleteMode(false); setSelectedIds(new Set()); await fetchData();
   };
 
