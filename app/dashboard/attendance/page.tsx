@@ -225,7 +225,7 @@ export default function AttendancePage() {
   }), [groups]);
 
   const handleConfirm = async (g: DayGroup) => {
-    if (!g.reportLog || g.reportStatus === 'checked' || g.reportStatus === 'adopted') return;
+    if (!g.reportLog || g.reportStatus === 'checked') return;
     setUpdatingId(g.reportLog.id);
     await supabase.from('attendance_logs').update({ report_status: 'checked' }).eq('id', g.reportLog.id);
     setLogs(prev => prev.map(l => l.id === g.reportLog!.id ? { ...l, report_status: 'checked' } : l));
@@ -367,30 +367,31 @@ export default function AttendancePage() {
                         <tr key={g.key + '_r'}>
                           <td colSpan={10} style={{ padding: '0 16px 16px', background: '#fafaf8', borderBottom: '1px solid #e8e8e4' }}>
                             <div style={{ paddingTop: '12px', fontSize: '12px', color: '#888' }}>
+                              {/* 月初目標（goal種別のみ） */}
                               {g.reportLog?.report_type === 'goal' && (
-                                <div style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '10px 12px' }}>
+                                <div style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '10px 12px', marginBottom: '10px' }}>
                                   <div style={{ fontSize: '10px', color: '#6B21A8', fontWeight: 600, marginBottom: '6px' }}>🎯 今月の目標</div>
                                   <div style={{ fontSize: '13px', color: '#1a1a1a', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{g.reportLog?.monthly_goal || '（未記入）'}</div>
                                 </div>
                               )}
-                              {(g.reportLog?.report_type === 'daily' || g.reportLog?.report_type === 'review') && (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: g.reportLog?.report_type === 'review' ? '10px' : '0' }}>
-                                  {[
-                                    { label: '新規コース', value: g.reportLog?.fact_new_course },
-                                    { label: 'サブスク15', value: g.reportLog?.fact_sub_15 },
-                                    { label: 'サブスク13', value: g.reportLog?.fact_sub_13 },
-                                    { label: 'サブスク11', value: g.reportLog?.fact_sub_11 },
-                                    { label: '既存顧客', value: g.reportLog?.fact_existing_customers },
-                                    { label: '店販', value: g.reportLog?.fact_shop_sales },
-                                    { label: '総売上', value: g.reportLog?.fact_total_revenue != null ? `¥${g.reportLog.fact_total_revenue.toLocaleString('ja-JP')}` : null },
-                                  ].map(({ label, value }) => (
-                                    <div key={label} style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '8px 10px' }}>
-                                      <div style={{ fontSize: '10px', color: '#3B6D11', fontWeight: 600, marginBottom: '4px' }}>{label}</div>
-                                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a' }}>{value ?? 0}{typeof value === 'number' ? '件' : ''}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
+                              {/* 毎日実績（全種別共通） */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: g.reportLog?.report_type === 'review' ? '10px' : '0' }}>
+                                {[
+                                  { label: '新規コース', value: g.reportLog?.fact_new_course },
+                                  { label: 'サブスク15', value: g.reportLog?.fact_sub_15 },
+                                  { label: 'サブスク13', value: g.reportLog?.fact_sub_13 },
+                                  { label: 'サブスク11', value: g.reportLog?.fact_sub_11 },
+                                  { label: '既存顧客', value: g.reportLog?.fact_existing_customers },
+                                  { label: '店販', value: g.reportLog?.fact_shop_sales },
+                                  { label: '総売上', value: g.reportLog?.fact_total_revenue != null ? `¥${g.reportLog.fact_total_revenue.toLocaleString('ja-JP')}` : null },
+                                ].map(({ label, value }) => (
+                                  <div key={label} style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '8px 10px' }}>
+                                    <div style={{ fontSize: '10px', color: '#3B6D11', fontWeight: 600, marginBottom: '4px' }}>{label}</div>
+                                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a' }}>{value ?? 0}{typeof value === 'number' ? '件' : ''}</div>
+                                  </div>
+                                ))}
+                              </div>
+                              {/* 振り返り（review種別のみ） */}
                               {g.reportLog?.report_type === 'review' && (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                   {[

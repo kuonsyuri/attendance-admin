@@ -309,8 +309,8 @@ export default function ReportsPage() {
                           {/* 毎日実績（全種別共通） */}
                           <DailyFactTable log={log} />
 
-                          {/* 振り返り */}
-                          {log.report_type === 'review' && (
+                          {/* 振り返り（review種別 or 振り返りデータが存在する場合） */}
+                          {(log.report_type === 'review' || log.review_good_1 || log.review_good_2 || log.review_good_3 || log.review_obstacle || log.review_question || log.review_action_plan) && (
                             <div style={{ marginBottom: '14px' }}>
                               <div style={{ fontSize: '11px', fontWeight: 600, color: '#1d4ed8', marginBottom: '8px', letterSpacing: '0.05em' }}>REVIEW</div>
                               {[
@@ -329,8 +329,8 @@ export default function ReportsPage() {
                             </div>
                           )}
 
-                          {/* 月初目標 */}
-                          {log.report_type === 'goal' && (
+                          {/* 月初目標（goal種別 or 目標データが存在する場合） */}
+                          {(log.report_type === 'goal' || log.monthly_goal) && (
                             <div style={{ marginBottom: '14px' }}>
                               <div style={{ fontSize: '11px', fontWeight: 600, color: '#7c3aed', marginBottom: '8px', letterSpacing: '0.05em' }}>MONTHLY GOAL</div>
                               <div style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '7px', padding: '12px 14px', fontSize: '13px', color: '#1a1a1a', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>

@@ -82,7 +82,8 @@ export default function StaffPage() {
       // status='pending' のみ表示
       supabase.from('pending_staff').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
       supabase.from('stores').select('*').order('name'),
-      supabase.from('attendance_logs').select('staff_id').eq('is_adopted', true),
+      // Phase 9で採用(is_adopted)を廃止 → 確認済み日報数で集計
+      supabase.from('attendance_logs').select('staff_id').eq('report_status', 'checked'),
     ]);
     setStaffList((sData as Staff[]) || []);
     setPendingList((pData as PendingStaff[]) || []);
@@ -319,7 +320,7 @@ export default function StaffPage() {
               {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ fontSize: '12px', color: '#888' }}>採択数</span>
+              <span style={{ fontSize: '12px', color: '#888' }}>確認済み数</span>
               <input type="number" min={0} placeholder="0" value={filterAdopted} onChange={e => setFilterAdopted(e.target.value)} style={{ ...sel, width: '60px' }} />
               <span style={{ fontSize: '12px', color: '#888' }}>以上</span>
             </div>
@@ -341,7 +342,7 @@ export default function StaffPage() {
                     <th style={thS}>スタッフ名</th>
                     <th style={thS}>役職</th>
                     <th style={{ ...thS, textAlign: 'center' }}>採用年度</th>
-                    <th style={{ ...thS, textAlign: 'center' }}>採択数</th>
+                    <th style={{ ...thS, textAlign: 'center' }}>確認済み数</th>
                     <th style={{ ...thS, width: '60px' }}></th>
                     <th style={{ ...thS, width: '40px', textAlign: 'center' }}>▼</th>
                   </tr>
@@ -388,7 +389,7 @@ export default function StaffPage() {
                                   { label: 'スタッフ名', value: s.name },
                                   { label: '役職', value: s.role || '—' },
                                   { label: '採用年度', value: hiredYear },
-                                  { label: '採択数', value: `${adopted}件` },
+                                  { label: '確認済み数', value: `${adopted}件` },
                                 ].map(({ label, value }) => (
                                   <div key={label} style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '7px', padding: '8px 12px' }}>
                                     <div style={{ fontSize: '10px', color: '#888', marginBottom: '3px' }}>{label}</div>
