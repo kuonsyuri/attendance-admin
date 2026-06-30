@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase, AttendanceLog, Store } from '@/lib/supabase';
+import EditAttendanceModal from './EditAttendanceModal';
 
 // ── 定数 ────────────────────────────────────────────────
 const AREAS = ['北海道', '東北', '関東', '中部', '近畿', '中国', '四国', '九州', '沖縄'];
@@ -165,6 +166,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [editGroup, setEditGroup] = useState<DayGroup | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -351,7 +353,13 @@ export default function AttendancePage() {
                             ? <button onClick={() => setExpandedKey(prev => prev === g.key ? null : g.key)} style={{ padding: '3px 10px', border: '1px solid #ddd', borderRadius: '5px', background: '#fff', color: '#555', fontSize: '11px', cursor: 'pointer' }}>{expanded ? '▲' : '▼'}</button>
                             : <span style={{ color: '#ccc', fontSize: '11px' }}>なし</span>}
                         </td>
-                        <td style={{ ...tdS, textAlign: 'center' }}>
+                        <td style={{ ...tdS, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <button
+                            onClick={() => setEditGroup(g)}
+                            style={{ padding: '4px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', background: '#fff', color: '#555', marginRight: '6px' }}
+                          >
+                            修正
+                          </button>
                           {hasRep && (
                             <button
                               onClick={() => handleConfirm(g)}
@@ -421,6 +429,15 @@ export default function AttendancePage() {
           </div>
         )}
       </div>
+
+      {/* 修正モーダル */}
+      {editGroup && (
+        <EditAttendanceModal
+          group={editGroup}
+          onClose={() => setEditGroup(null)}
+          onSaved={fetchData}
+        />
+      )}
     </div>
   );
 }
