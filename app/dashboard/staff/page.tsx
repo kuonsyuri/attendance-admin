@@ -273,6 +273,8 @@ export default function StaffPage() {
 
   const btnBase: React.CSSProperties = { padding: '7px 14px', border: '1px solid #ddd', borderRadius: '7px', fontSize: '12px', cursor: 'pointer', background: '#fff', color: '#555' };
 
+  const editingId = expansion?.mode === 'edit' ? expansion.id : null;
+
   return (
     <div style={{ padding: '28px 32px' }}>
       {/* ヘッダー */}
@@ -403,36 +405,6 @@ export default function StaffPage() {
                           </tr>
                         )}
 
-                        {/* 編集展開 */}
-                        {isExpEdit && (
-                          <tr key={s.id + '_edit'}>
-                            <td colSpan={deleteMode ? 8 : 7} style={{ padding: '12px 16px 16px', background: '#fafaf8', borderBottom: '1px solid #e8e8e4' }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', maxWidth: '640px' }}>
-                                <div>
-                                  <span style={lbl}>スタッフ名</span>
-                                  <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} style={inp} />
-                                  <span style={lbl}>役職</span>
-                                  <select value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })} style={{ ...sel, width: '100%', marginBottom: '10px' }}>
-                                    <option value="">選択してください</option>
-                                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                                  </select>
-                                  <span style={lbl}>採用年度</span>
-                                  <input value={editForm.hiredYear} onChange={e => setEditForm({ ...editForm, hiredYear: e.target.value })} placeholder="例：2024" style={inp} />
-                                </div>
-                                <div>
-                                  <span style={lbl}>店舗（複数選択可）</span>
-                                  <StoreCheckboxes storeList={storeList} ids={editForm.storeIds} onChange={ids => setEditForm({ ...editForm, storeIds: ids })} />
-                                  <span style={lbl}>メモ</span>
-                                  <textarea value={editForm.memo} onChange={e => setEditForm({ ...editForm, memo: e.target.value })} rows={3} style={{ ...inp, resize: 'vertical' }} />
-                                </div>
-                              </div>
-                              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                                <button onClick={() => setExpansion(null)} style={{ padding: '6px 16px', border: '1px solid #ddd', borderRadius: '7px', background: '#fff', fontSize: '12px', cursor: 'pointer', color: '#555' }}>キャンセル</button>
-                                <button onClick={() => handleEditSave(s.id)} disabled={saving} style={{ padding: '6px 16px', background: '#3B6D11', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>{saving ? '保存中...' : '保存する'}</button>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
                       </>
                     );
                   })}
@@ -517,6 +489,32 @@ export default function StaffPage() {
           )}
         </div>
         </>
+      )}
+
+      {/* ── 編集モーダル ── */}
+      {editingId !== null && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setExpansion(null); }}>
+          <div style={{ background: '#fff', borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 500, marginBottom: '20px' }}>スタッフを編集</h2>
+            <span style={lbl}>スタッフ名 *</span>
+            <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} style={inp} />
+            <span style={lbl}>役職</span>
+            <select value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })} style={{ ...sel, width: '100%', marginBottom: '10px' }}>
+              <option value="">選択してください</option>
+              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <span style={lbl}>採用年度</span>
+            <input value={editForm.hiredYear} onChange={e => setEditForm({ ...editForm, hiredYear: e.target.value })} placeholder="例：2024" style={inp} />
+            <span style={lbl}>店舗 <span style={{ fontWeight: 400, color: '#aaa' }}>（複数選択可）</span></span>
+            <StoreCheckboxes storeList={storeList} ids={editForm.storeIds} onChange={ids => setEditForm({ ...editForm, storeIds: ids })} />
+            <span style={lbl}>メモ</span>
+            <textarea value={editForm.memo} onChange={e => setEditForm({ ...editForm, memo: e.target.value })} rows={3} style={{ ...inp, resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
+              <button onClick={() => setExpansion(null)} style={{ padding: '8px 18px', border: '1px solid #ddd', borderRadius: '7px', background: '#fff', fontSize: '13px', cursor: 'pointer', color: '#555' }}>キャンセル</button>
+              <button onClick={() => handleEditSave(editingId)} disabled={saving} style={{ padding: '8px 18px', background: '#3B6D11', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>{saving ? '保存中...' : '保存する'}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── 手動登録モーダル ── */}

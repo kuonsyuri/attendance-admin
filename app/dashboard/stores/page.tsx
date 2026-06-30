@@ -352,6 +352,7 @@ export default function StoresPage() {
   };
 
   const colSpan = deleteMode ? 8 : 7;
+  const editingId = expansion?.mode === 'edit' ? expansion.id : null;
 
   return (
     <div style={{ padding: '28px 32px' }}>
@@ -468,35 +469,38 @@ export default function StoresPage() {
                     </tr>
                   )}
 
-                  {/* Edit expand */}
-                  {expansion?.id === s.id && expansion.mode === 'edit' && (
-                    <tr>
-                      <td colSpan={colSpan} style={{ padding: '20px 24px', background: '#f9f9f7', borderBottom: '1px solid #e8e8e4' }}>
-                        <div style={{ maxWidth: '640px' }}>
-                          <StoreFormFields
-                            form={editForm}
-                            setForm={setEditForm}
-                            geocoding={editGeocoding}
-                            onAddressBlur={() => handleAddressBlur(editForm, setEditForm, setEditGeocoding)}
-                          />
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
-                            <button onClick={() => setExpansion(null)} style={{ ...actionBtn, padding: '9px 18px', fontSize: '13px' }}>
-                              キャンセル
-                            </button>
-                            <button onClick={() => handleEditSave(s.id)} disabled={saving} style={greenBtn}>
-                              {saving ? '保存中...' : '保存する'}
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </React.Fragment>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      {/* Edit Modal */}
+      {editingId !== null && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setExpansion(null); }}
+        >
+          <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 style={{ fontSize: '17px', fontWeight: 500, marginBottom: '20px' }}>店舗を編集</h2>
+            <StoreFormFields
+              form={editForm}
+              setForm={setEditForm}
+              geocoding={editGeocoding}
+              onAddressBlur={() => handleAddressBlur(editForm, setEditForm, setEditGeocoding)}
+            />
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+              <button onClick={() => setExpansion(null)} style={{ ...actionBtn, padding: '9px 18px', fontSize: '13px' }}>
+                キャンセル
+              </button>
+              <button onClick={() => handleEditSave(editingId)} disabled={saving} style={greenBtn}>
+                {saving ? '保存中...' : '保存する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Modal */}
       {showModal && (
