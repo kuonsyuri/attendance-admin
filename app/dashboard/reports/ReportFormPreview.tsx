@@ -57,12 +57,12 @@ function FieldPreview({ f }: { f: ReportField }) {
 function GoalPinned({ goalDef, mode }: { goalDef: ReportTypeDef | undefined; mode: 'input' | 'display' }) {
   const field = goalDef?.sections?.[0]?.fields?.[0];
   return (
-    <div style={{ position: 'sticky', top: '-18px', zIndex: 3, background: '#fff', paddingTop: '6px', marginBottom: '8px' }}>
+    <div style={{ marginBottom: '8px' }}>
       <div style={{ border: '1px solid #E9D5FF', background: '#FDF4FF', borderRadius: '12px', padding: '12px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <span style={{ fontSize: '13px', fontWeight: 700, color: '#6B21A8' }}>🎯 今月の目標</span>
           <span style={{ fontSize: '10px', fontWeight: 600, color: mode === 'input' ? '#9333ea' : '#6B21A8', background: '#F3E8FF', padding: '2px 8px', borderRadius: '99px' }}>
-            {mode === 'input' ? '初日に入力' : '登録済み・固定表示'}
+            {mode === 'input' ? '初日に入力' : '登録済み・表示'}
           </span>
         </div>
         {mode === 'input' ? (
