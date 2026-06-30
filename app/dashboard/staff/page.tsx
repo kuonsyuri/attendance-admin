@@ -157,7 +157,7 @@ export default function StaffPage() {
     const hiredAt = editForm.hiredYear ? `${editForm.hiredYear}-04-01` : null;
     await supabase.from('staff').update({
       name: editForm.name, role: editForm.role,
-      store_id: editForm.storeIds[0] || null, hired_at: hiredAt, memo: editForm.memo,
+      hired_at: hiredAt, memo: editForm.memo,
     }).eq('id', staffId);
     await supabase.from('staff_stores').delete().eq('staff_id', staffId);
     for (const sid of editForm.storeIds)
@@ -171,7 +171,7 @@ export default function StaffPage() {
     if (addForm.storeIds.length === 0) return alert('店舗を選択してください');
     setSaving(true);
     const { data, error } = await supabase.from('staff')
-      .insert({ name: addForm.name, role: addForm.role, store_id: addForm.storeIds[0], memo: addForm.memo })
+      .insert({ name: addForm.name, role: addForm.role, memo: addForm.memo })
       .select('id').single();
     if (error || !data) { setSaving(false); return alert('登録に失敗しました: ' + (error?.message || '')); }
     for (const sid of addForm.storeIds)
@@ -202,7 +202,6 @@ export default function StaffPage() {
       line_user_id: lineUserId,
       name,
       role,
-      store_id: storeIds[0],
     });
 
     if (staffError) {
