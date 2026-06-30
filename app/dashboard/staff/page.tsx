@@ -116,7 +116,7 @@ export default function StaffPage() {
     setExpansion(prev => prev?.id === id && prev.mode === 'view' ? null : { id, mode: 'view' });
 
   const openEdit = (s: Staff) => {
-    const ids = s.staff_stores?.map(ss => Number(ss.store_id)) || (s.store_id ? [s.store_id] : []);
+    const ids = s.staff_stores?.map(ss => Number(ss.store_id)) || [];
     const hiredYear = s.hired_at ? String(new Date(s.hired_at).getFullYear()) : '';
     setEditForm({ name: s.name, role: s.role || '', storeIds: ids, hiredYear, memo: s.memo || '' });
     setExpansion(prev => prev?.id === s.id && prev.mode === 'edit' ? null : { id: s.id, mode: 'edit' });

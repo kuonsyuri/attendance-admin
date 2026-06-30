@@ -328,8 +328,8 @@ export default function StoresPage() {
       store_type: s.store_type || '',
       prefecture: s.prefecture || '',
       area: s.area || '',
-      latitude: s.latitude != null ? String(s.latitude) : (s.lat ? String(s.lat) : ''),
-      longitude: s.longitude != null ? String(s.longitude) : (s.lng ? String(s.lng) : ''),
+      latitude: s.latitude != null ? String(s.latitude) : '',
+      longitude: s.longitude != null ? String(s.longitude) : '',
       radius_m: String(s.radius_m || 50),
       memo: s.memo || '',
     });
@@ -455,9 +455,9 @@ export default function StoresPage() {
                           <div><strong>電話番号：</strong>{s.phone || '—'}</div>
                           <div><strong>店舗区分：</strong>{s.store_type === 'direct' ? '直営' : s.store_type === 'fc' ? 'FC' : '—'}</div>
                           <div><strong>緯度 / 経度：</strong>
-                            {(s.latitude ?? s.lat) ? `${(s.latitude ?? s.lat)?.toFixed?.(6)} / ${(s.longitude ?? s.lng)?.toFixed?.(6)}` : '—'}
-                            {(s.latitude ?? s.lat) ? (
-                              <a href={`https://www.google.com/maps?q=${s.latitude ?? s.lat},${s.longitude ?? s.lng}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '8px', fontSize: '11px', color: '#3B6D11' }}>地図</a>
+                            {s.latitude != null ? `${s.latitude.toFixed(6)} / ${s.longitude != null ? s.longitude.toFixed(6) : '—'}` : '—'}
+                            {s.latitude != null ? (
+                              <a href={`https://www.google.com/maps?q=${s.latitude},${s.longitude}`} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '8px', fontSize: '11px', color: '#3B6D11' }}>地図</a>
                             ) : null}
                           </div>
                           <div style={{ marginTop: '8px' }}><strong>メモ：</strong></div>

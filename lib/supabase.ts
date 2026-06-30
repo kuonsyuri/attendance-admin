@@ -8,10 +8,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export type Store = {
   id: number;
   name: string;
-  /** @deprecated 層3でlatitude/longitudeに一本化。読み取りフォールバック用に残置。次段でDROP。 */
-  lat?: number | null;
-  /** @deprecated 層3でlatitude/longitudeに一本化。次段でDROP。 */
-  lng?: number | null;
   radius_m: number;
   address: string | null;
   prefecture: string | null;
@@ -35,8 +31,6 @@ export type Staff = {
   id: number;
   line_user_id: string;
   name: string;
-  /** @deprecated 層3でstaff_storesに一本化。読み取りフォールバック用に残置。次段でDROP。 */
-  store_id?: number | null;
   role: string;
   hired_at: string | null;
   memo: string | null;
