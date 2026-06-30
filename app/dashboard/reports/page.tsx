@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { supabase, AttendanceLog, Store } from '@/lib/supabase';
+import { ReportTypeDef, loadReportSchema } from '@/lib/reportSchema';
+import ReportSchemaEditor from './ReportSchemaEditor';
+import ReportFormPreview from './ReportFormPreview';
 
 // ── 定数 ────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -128,6 +131,16 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'schema' | 'preview'>('schema');
+  const [reportSchema, setReportSchema] = useState<ReportTypeDef[] | null>(null);
+
+  // 設定モーダルを開いた初回に構成を読み込む
+  useEffect(() => {
+    if (showSettings && reportSchema === null) {
+      loadReportSchema().then(setReportSchema);
+    }
+  }, [showSettings, reportSchema]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -198,13 +211,75 @@ export default function ReportsPage() {
           <h1 style={{ fontSize: '20px', fontWeight: 500 }}>日報</h1>
           <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>毎日実績・振り返り・月初目標の確認ができます</p>
         </div>
-        <button
-          onClick={() => window.print()}
-          style={{ padding: '7px 16px', border: '1px solid #ddd', borderRadius: '7px', background: '#fff', fontSize: '13px', color: '#555', cursor: 'pointer' }}
-        >
-          PDF出力
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setShowSettings(s => !s)}
+            style={{ padding: '7px 14px', border: `1px solid ${showSettings ? '#fde68a' : '#ddd'}`, borderRadius: '7px', background: showSettings ? '#fffbeb' : '#fff', fontSize: '13px', color: showSettings ? '#92400e' : '#555', cursor: 'pointer' }}
+          >
+            ⚙ 内部設定
+          </button>
+          <button
+            onClick={() => window.print()}
+            style={{ padding: '7px 16px', border: '1px solid #ddd', borderRadius: '7px', background: '#fff', fontSize: '13px', color: '#555', cursor: 'pointer' }}
+          >
+            PDF出力
+          </button>
+        </div>
       </div>
+
+      {/* 内部設定: 日報構成（現状表示）モーダル */}
+      {showSettings && (
+        <div
+          className="no-print"
+          onClick={() => setShowSettings(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#f5f5f3', borderRadius: '14px', width: '100%', maxWidth: '760px', boxShadow: '0 12px 40px rgba(0,0,0,0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)' }}
+          >
+            {/* モーダルヘッダー */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #e8e8e4', background: '#fff' }}>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#1a1a1a' }}>⚙ 内部設定 — 日報構成</div>
+              <button
+                onClick={() => setShowSettings(false)}
+                aria-label="閉じる"
+                style={{ width: '30px', height: '30px', border: '1px solid #ddd', borderRadius: '7px', background: '#fff', fontSize: '15px', color: '#888', cursor: 'pointer', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+            {/* タブ */}
+            <div style={{ display: 'flex', gap: '2px', padding: '0 20px', borderBottom: '1px solid #e8e8e4', background: '#fff' }}>
+              {([['schema', '構成設定'], ['preview', 'LINE画面プレビュー']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setSettingsTab(key)}
+                  style={{
+                    padding: '10px 16px', border: 'none', background: 'transparent', fontSize: '13px', cursor: 'pointer',
+                    color: settingsTab === key ? '#3B6D11' : '#888',
+                    fontWeight: settingsTab === key ? 600 : 400,
+                    borderBottom: settingsTab === key ? '2px solid #3B6D11' : '2px solid transparent',
+                    marginBottom: '-1px',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* モーダル本文 */}
+            <div style={{ padding: '20px', overflowY: 'auto' }}>
+              {reportSchema === null ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>構成を読み込み中…</div>
+              ) : settingsTab === 'schema' ? (
+                <ReportSchemaEditor schema={reportSchema} onChange={setReportSchema} />
+              ) : (
+                <ReportFormPreview schema={reportSchema} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 検索バー */}
       <div className="no-print" style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '12px', padding: '16px 20px', marginBottom: '16px' }}>
