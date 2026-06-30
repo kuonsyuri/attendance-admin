@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: NextRequest) {
-  // パスワード認証
-  const body = await req.json().catch(() => ({ password: '', staffIds: [] as number[] }));
-  if (body.password !== process.env.NEXT_PUBLIC_APP_PASSWORD) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const staffIds: number[] = Array.isArray(body.staffIds) ? body.staffIds : [];
+  // 認証は middleware（セッションCookie）が保証。ここでは入力検証のみ。
+  const body = await req.json().catch(() => ({ staffIds: [] as number[] }));
+  const staffIds: number[] = Array.isArray(body.staffIds)
+    ? body.staffIds.filter((v: unknown): v is number => typeof v === 'number' && Number.isInteger(v))
+    : [];
   if (staffIds.length === 0) {
     return NextResponse.json({ error: 'staffIds is required' }, { status: 400 });
+  }
+  if (staffIds.length > 100) {
+    return NextResponse.json({ error: '一度に削除できるのは100件までです' }, { status: 400 });
   }
 
   // service_role キーで RLS をバイパス

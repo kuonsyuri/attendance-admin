@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 
@@ -15,22 +14,14 @@ const navItems = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    if (localStorage.getItem('bihada_auth') !== 'ok') {
-      router.push('/');
-    } else {
-      setReady(true);
-    }
-  }, [router]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('bihada_auth');
+  // 認証は middleware（httpOnly Cookieセッション）が保証するため、
+  // クライアント側のガードは不要。
+  const handleLogout = async () => {
+    await fetch('/api/logout', { method: 'POST' }).catch(() => {});
     router.push('/');
+    router.refresh();
   };
-
-  if (!ready) return null;
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f5f5f3' }}>

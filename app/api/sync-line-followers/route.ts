@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -53,13 +53,8 @@ async function fetchProfile(
   }
 }
 
-export async function POST(req: NextRequest) {
-  // パスワード認証
-  const { password } = await req.json().catch(() => ({ password: '' }));
-  if (password !== process.env.NEXT_PUBLIC_APP_PASSWORD) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function POST() {
+  // 認証は middleware（セッションCookie）が保証。
   const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   if (!accessToken) {
     return NextResponse.json({ error: 'LINE_CHANNEL_ACCESS_TOKEN が設定されていません' }, { status: 500 });

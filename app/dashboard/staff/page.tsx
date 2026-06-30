@@ -135,7 +135,6 @@ export default function StaffPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          password: process.env.NEXT_PUBLIC_APP_PASSWORD ?? '',
           staffIds: Array.from(selectedIds),
         }),
       });
@@ -249,8 +248,6 @@ export default function StaffPage() {
     try {
       const res = await fetch('/api/sync-line-followers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: process.env.NEXT_PUBLIC_APP_PASSWORD ?? '' }),
       });
       const data = await res.json();
       if (!res.ok) {

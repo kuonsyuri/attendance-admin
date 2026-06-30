@@ -1,11 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
-  const { prompt } = await req.json();
+  // 認証は middleware（セッションCookie）が保証。
+  const { prompt } = await req.json().catch(() => ({ prompt: '' }));
+
+  if (typeof prompt !== 'string' || prompt.length === 0) {
+    return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
+  }
+  if (prompt.length > 8000) {
+    return NextResponse.json({ error: 'prompt が長すぎます（8000文字以内）' }, { status: 400 });
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ summary: 'ANTHROPIC_API_KEY が設定されていません。.env.local に追加してください。' }, { status: 200 });
+    return NextResponse.json({ error: 'ANTHROPIC_API_KEY が設定されていません。' }, { status: 500 });
   }
 
   try {
