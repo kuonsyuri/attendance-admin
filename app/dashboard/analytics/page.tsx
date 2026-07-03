@@ -7,11 +7,8 @@ import { AREAS, PREFECTURE_TO_AREA } from '@/lib/geo';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { ErrorBanner, collectErrors } from '@/components/ui/ErrorBanner';
 
-// ── スタイル ─────────────────────────────────────────────
-const card: React.CSSProperties = { background: '#fff', border: '1px solid #e8e8e4', borderRadius: '12px', overflow: 'hidden' };
-const thS: React.CSSProperties = { padding: '10px 12px', textAlign: 'left', fontSize: '11px', color: '#888', fontWeight: 500, letterSpacing: '0.04em', borderBottom: '1px solid #e8e8e4', background: '#fafaf8', whiteSpace: 'nowrap' };
-const tdS: React.CSSProperties = { padding: '10px 12px', fontSize: '13px', color: '#1a1a1a', borderBottom: '1px solid #f0f0ec', verticalAlign: 'middle' };
-const sel: React.CSSProperties = { padding: '6px 10px', border: '1px solid #ddd', borderRadius: '7px', fontSize: '13px', background: '#fff', outline: 'none' };
+// ── スタイル（lib/theme に集約済み） ─────────────────────────
+import { card, th as thS, td as tdS, sel } from '@/lib/theme';
 
 // ── 型 ──────────────────────────────────────────────────
 type StaffStat = {

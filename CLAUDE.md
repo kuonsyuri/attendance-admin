@@ -45,18 +45,27 @@ ELAN MARIRE出退勤APP/
 
 ```
 app/
-├── page.tsx                   # ログインページ
+├── page.tsx                   # ログインページ（サーバセッション認証）
 ├── layout.tsx
 ├── globals.css
-└── dashboard/
-    ├── layout.tsx             # ダッシュボード共通レイアウト
-    ├── page.tsx               # ダッシュボードトップ
-    ├── attendance/page.tsx    # 出退勤ログ（既存）
-    ├── staff/page.tsx         # スタッフ管理（既存）
-    ├── stores/page.tsx        # 店舗管理（既存）
-    ├── summary/page.tsx       # サマリー → 分析ページに再編
-    └── api/summarize/         # API Route
+├── dashboard/
+│   ├── layout.tsx             # ダッシュボード共通レイアウト
+│   ├── page.tsx               # ダッシュボードトップ（attendanceへredirect）
+│   ├── attendance/            # 出退勤ログ（修正モーダル含む）
+│   ├── analytics/             # 分析
+│   ├── reports/               # 日報（構成設定・LINEプレビュー含む）
+│   ├── staff/                 # スタッフ管理
+│   └── stores/                # 店舗管理
+├── api/
+│   ├── login|logout/          # セッション発行・破棄
+│   ├── delete-staff/          # スタッフ削除（service_role）
+│   ├── line-webhook/          # LINE友達追加Webhook（署名検証）
+│   ├── line-notify/           # 打刻・日報の公式アカ返信（IDトークン検証）
+│   └── sync-line-followers/   # フォロワー同期
+├── lib/                       # supabase / auth / line / theme / dateUtils / geo / reportSchema
+└── components/ui/             # DatePicker / Modal / ErrorBanner
 ```
+※ 旧 summary ページと api/summarize は撤去済み（2026-07-04・git履歴に残存）
 
 ---
 

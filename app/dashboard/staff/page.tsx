@@ -3,17 +3,15 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase, Staff, PendingStaff, Store } from '@/lib/supabase';
 import { ErrorBanner, collectErrors } from '@/components/ui/ErrorBanner';
+import { Modal } from '@/components/ui/Modal';
 
 // ── 定数 ────────────────────────────────────────────────
 const ROLES = ['オペレーター（施術者）', 'チーフ（店長候補）', '店長', 'エリアマネージャー', '本部スタッフ'];
 
 // ── スタイル ─────────────────────────────────────────────
-const card: React.CSSProperties = { background: '#fff', border: '1px solid #e8e8e4', borderRadius: '12px', overflow: 'hidden' };
-const thS: React.CSSProperties = { padding: '10px 12px', textAlign: 'left', fontSize: '11px', color: '#888', fontWeight: 500, letterSpacing: '0.04em', borderBottom: '1px solid #e8e8e4', background: '#fafaf8', whiteSpace: 'nowrap' };
-const tdS: React.CSSProperties = { padding: '10px 12px', fontSize: '13px', color: '#1a1a1a', borderBottom: '1px solid #f0f0ec', verticalAlign: 'middle' };
-const sel: React.CSSProperties = { padding: '6px 10px', border: '1px solid #ddd', borderRadius: '7px', fontSize: '13px', background: '#fff', outline: 'none' };
-const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', border: '1px solid #ddd', borderRadius: '7px', fontSize: '13px', outline: 'none', marginBottom: '10px' };
-const lbl: React.CSSProperties = { display: 'block', fontSize: '11px', color: '#666', fontWeight: 500, marginBottom: '4px' };
+import { card, th as thS, td as tdS, sel, input, label as lbl } from '@/lib/theme';
+// フォーム密度のみページ固有（下余白をトークンに追加）
+const inp: React.CSSProperties = { ...input, marginBottom: '10px' };
 
 // ── 型 ──────────────────────────────────────────────────
 type EditForm     = { name: string; role: string; storeIds: number[]; hiredYear: string; memo: string };
@@ -518,9 +516,7 @@ export default function StaffPage() {
 
       {/* ── 編集モーダル ── */}
       {editingId !== null && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setExpansion(null); }}>
-          <div style={{ background: '#fff', borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 500, marginBottom: '20px' }}>スタッフを編集</h2>
+        <Modal title="スタッフを編集" onClose={() => setExpansion(null)}>
             <span style={lbl}>スタッフ名 *</span>
             <input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} style={inp} />
             <span style={lbl}>役職</span>
@@ -538,15 +534,12 @@ export default function StaffPage() {
               <button onClick={() => setExpansion(null)} style={{ padding: '8px 18px', border: '1px solid #ddd', borderRadius: '7px', background: '#fff', fontSize: '13px', cursor: 'pointer', color: '#555' }}>キャンセル</button>
               <button onClick={() => handleEditSave(editingId)} disabled={saving} style={{ padding: '8px 18px', background: '#3B6D11', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>{saving ? '保存中...' : '保存する'}</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── 手動登録モーダル ── */}
       {showAdd && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setShowAdd(false); }}>
-          <div style={{ background: '#fff', borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 500, marginBottom: '20px' }}>スタッフを登録</h2>
+        <Modal title="スタッフを登録" onClose={() => setShowAdd(false)}>
             <span style={lbl}>スタッフ名 *</span>
             <input value={addForm.name} onChange={e => setAddForm({ ...addForm, name: e.target.value })} placeholder="例：田中 さくら" style={inp} />
             <span style={lbl}>役職</span>
@@ -562,14 +555,12 @@ export default function StaffPage() {
               <button onClick={() => setShowAdd(false)} style={{ padding: '8px 18px', border: '1px solid #ddd', borderRadius: '7px', background: '#fff', fontSize: '13px', cursor: 'pointer', color: '#555' }}>キャンセル</button>
               <button onClick={handleAdd} disabled={saving} style={{ padding: '8px 18px', background: '#3B6D11', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>{saving ? '登録中...' : '登録する'}</button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* ── LINE承認モーダル ── */}
       {approvalTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }} onClick={e => { if (e.target === e.currentTarget) setApprovalTarget(null); }}>
-          <div style={{ background: '#fff', borderRadius: '14px', padding: '28px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <Modal onClose={() => setApprovalTarget(null)}>
             {/* ヘッダー */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
               {approvalTarget.picture_url ? (
@@ -624,8 +615,7 @@ export default function StaffPage() {
                 {approving ? '承認中...' : '✓ 承認する'}
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

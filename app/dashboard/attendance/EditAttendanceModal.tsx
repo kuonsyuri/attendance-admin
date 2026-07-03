@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase, AttendanceLog } from '@/lib/supabase';
+import { Modal } from '@/components/ui/Modal';
 
 // 出退勤ログ修正モーダル — 打刻時刻の編集・未打刻の追加。
 
@@ -98,12 +99,7 @@ export default function EditAttendanceModal({ group, onClose, onSaved }: { group
   };
 
   return (
-    <div
-      className="no-print"
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '60px 20px', overflowY: 'auto' }}
-    >
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '460px', boxShadow: '0 12px 40px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+    <Modal unpadded maxWidth={460} onClose={onClose}>
         {/* ヘッダー */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #e8e8e4' }}>
           <div>
@@ -114,7 +110,7 @@ export default function EditAttendanceModal({ group, onClose, onSaved }: { group
         </div>
 
         {/* 本文 */}
-        <div style={{ padding: '16px 20px' }}>
+        <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
           <div style={{ fontSize: '11px', color: '#999', marginBottom: '12px' }}>時刻を修正、または未打刻の枠に入力して追加できます。</div>
           {slots.map(s => {
             const changed = s.value !== s.original;
@@ -140,7 +136,6 @@ export default function EditAttendanceModal({ group, onClose, onSaved }: { group
             {saving ? '保存中…' : '保存'}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

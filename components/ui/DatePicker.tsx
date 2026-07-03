@@ -2,10 +2,9 @@
 
 import { useMemo } from 'react';
 import { DatePick } from '@/lib/dateUtils';
+import { sel } from '@/lib/theme';
 
 // 年/月/日の階層セレクタ（出退勤ログ・分析・日報で共通利用）
-
-const sel: React.CSSProperties = { padding: '6px 10px', border: '1px solid #ddd', borderRadius: '7px', fontSize: '13px', background: '#fff', outline: 'none' };
 
 export function DatePicker({ value, onChange, label }: { value: DatePick; onChange: (v: DatePick) => void; label?: string }) {
   const curYear = new Date().getFullYear();

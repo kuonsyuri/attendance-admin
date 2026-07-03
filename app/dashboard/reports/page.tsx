@@ -6,6 +6,7 @@ import { ReportTypeDef, loadReportSchema } from '@/lib/reportSchema';
 import { DatePick, toISO, fromDate } from '@/lib/dateUtils';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { ErrorBanner, collectErrors } from '@/components/ui/ErrorBanner';
+import { Modal } from '@/components/ui/Modal';
 import ReportSchemaEditor from './ReportSchemaEditor';
 import ReportFormPreview from './ReportFormPreview';
 
@@ -23,11 +24,8 @@ const REPORT_TYPE_CONFIG = {
   goal:   { label: '月初目標', bg: '#f3e8ff', color: '#7c3aed' },
 } as const;
 
-// ── スタイル ─────────────────────────────────────────────
-const card: React.CSSProperties = { background: '#fff', border: '1px solid #e8e8e4', borderRadius: '12px', overflow: 'hidden' };
-const thS: React.CSSProperties = { padding: '10px 14px', textAlign: 'left', fontSize: '11px', color: '#888', fontWeight: 500, letterSpacing: '0.04em', borderBottom: '1px solid #e8e8e4', background: '#fafaf8' };
-const tdS: React.CSSProperties = { padding: '11px 14px', fontSize: '13px', color: '#1a1a1a', borderBottom: '1px solid #f0f0ec', verticalAlign: 'middle' };
-const sel: React.CSSProperties = { padding: '6px 10px', border: '1px solid #ddd', borderRadius: '7px', fontSize: '13px', background: '#fff', outline: 'none' };
+// ── スタイル（共通は lib/theme に集約済み） ───────────────────
+import { card, th as thS, td as tdS, sel } from '@/lib/theme';
 const detailCell: React.CSSProperties = { padding: '6px 12px', fontSize: '12px', color: '#555', borderBottom: '1px solid #f0f0ec', whiteSpace: 'nowrap' };
 
 // ── ヘルパー ─────────────────────────────────────────────
@@ -241,15 +239,7 @@ export default function ReportsPage() {
 
       {/* 内部設定: 日報構成（現状表示）モーダル */}
       {showSettings && (
-        <div
-          className="no-print"
-          onClick={() => setShowSettings(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 20px', overflowY: 'auto' }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: '#f5f5f3', borderRadius: '14px', width: '100%', maxWidth: '760px', boxShadow: '0 12px 40px rgba(0,0,0,0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 80px)' }}
-          >
+        <Modal unpadded maxWidth={760} background="#f5f5f3" onClose={() => setShowSettings(false)}>
             {/* モーダルヘッダー */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #e8e8e4', background: '#fff' }}>
               <div style={{ fontSize: '15px', fontWeight: 600, color: '#1a1a1a' }}>⚙ 内部設定 — 日報構成</div>
@@ -280,7 +270,7 @@ export default function ReportsPage() {
               ))}
             </div>
             {/* モーダル本文 */}
-            <div style={{ padding: '20px', overflowY: 'auto' }}>
+            <div style={{ padding: '20px', overflowY: 'auto', flex: 1, minHeight: 0 }}>
               {reportSchema === null ? (
                 <div style={{ padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '13px' }}>構成を読み込み中…</div>
               ) : settingsTab === 'schema' ? (
@@ -289,8 +279,7 @@ export default function ReportsPage() {
                 <ReportFormPreview schema={reportSchema} />
               )}
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* 検索バー */}

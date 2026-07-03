@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase, Store } from '@/lib/supabase';
 import { AREAS, PREFECTURE_TO_AREA } from '@/lib/geo';
+import { Modal } from '@/components/ui/Modal';
 
 const AREA_TO_PREFECTURES: Record<string, string[]> = {};
 for (const [pref, area] of Object.entries(PREFECTURE_TO_AREA)) {
@@ -10,14 +11,9 @@ for (const [pref, area] of Object.entries(PREFECTURE_TO_AREA)) {
   AREA_TO_PREFECTURES[area].push(pref);
 }
 
-const card: React.CSSProperties = { background: '#fff', border: '1px solid #e8e8e4', borderRadius: '12px', overflow: 'hidden' };
-const th: React.CSSProperties = { padding: '10px 14px', textAlign: 'left', fontSize: '11px', color: '#888', fontWeight: 500, letterSpacing: '0.04em', borderBottom: '1px solid #e8e8e4', background: '#fafaf8' };
-const td: React.CSSProperties = { padding: '12px 14px', fontSize: '13px', color: '#1a1a1a', borderBottom: '1px solid #f0f0ec', verticalAlign: 'middle' };
-const inputStyle: React.CSSProperties = { width: '100%', padding: '9px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px', fontWeight: 500 };
-const selectStyle: React.CSSProperties = { padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '13px', background: '#fff', cursor: 'pointer', outline: 'none' };
+import { card, th, td, input as inputStyle, label as labelStyle, sel as selectStyle, btnPrimary as greenBtn } from '@/lib/theme';
+// 行内アクションボタンのみページ固有
 const actionBtn: React.CSSProperties = { padding: '4px 10px', border: '1px solid #ddd', borderRadius: '6px', background: '#fff', fontSize: '11px', color: '#555', cursor: 'pointer' };
-const greenBtn: React.CSSProperties = { padding: '8px 18px', background: '#3B6D11', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer' };
 
 type StoreFormData = {
   name: string;
@@ -460,54 +456,42 @@ export default function StoresPage() {
 
       {/* Edit Modal */}
       {editingId !== null && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setExpansion(null); }}
-        >
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 500, marginBottom: '20px' }}>店舗を編集</h2>
-            <StoreFormFields
-              form={editForm}
-              setForm={setEditForm}
-              geocoding={editGeocoding}
-              onAddressBlur={() => handleAddressBlur(editForm, setEditForm, setEditGeocoding)}
-            />
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
-              <button onClick={() => setExpansion(null)} style={{ ...actionBtn, padding: '9px 18px', fontSize: '13px' }}>
-                キャンセル
-              </button>
-              <button onClick={() => handleEditSave(editingId)} disabled={saving} style={greenBtn}>
-                {saving ? '保存中...' : '保存する'}
-              </button>
-            </div>
+        <Modal title="店舗を編集" maxWidth={520} onClose={() => setExpansion(null)}>
+          <StoreFormFields
+            form={editForm}
+            setForm={setEditForm}
+            geocoding={editGeocoding}
+            onAddressBlur={() => handleAddressBlur(editForm, setEditForm, setEditGeocoding)}
+          />
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <button onClick={() => setExpansion(null)} style={{ ...actionBtn, padding: '9px 18px', fontSize: '13px' }}>
+              キャンセル
+            </button>
+            <button onClick={() => handleEditSave(editingId)} disabled={saving} style={greenBtn}>
+              {saving ? '保存中...' : '保存する'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Add Modal */}
       {showModal && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-        >
-          <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 500, marginBottom: '20px' }}>店舗を登録</h2>
-            <StoreFormFields
-              form={form}
-              setForm={setForm}
-              geocoding={geocoding}
-              onAddressBlur={() => handleAddressBlur(form, setForm, setGeocoding)}
-            />
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
-              <button onClick={() => setShowModal(false)} style={{ ...actionBtn, padding: '9px 18px', fontSize: '13px' }}>
-                キャンセル
-              </button>
-              <button onClick={handleAdd} disabled={saving} style={greenBtn}>
-                {saving ? '保存中...' : '登録する'}
-              </button>
-            </div>
+        <Modal title="店舗を登録" maxWidth={520} onClose={() => setShowModal(false)}>
+          <StoreFormFields
+            form={form}
+            setForm={setForm}
+            geocoding={geocoding}
+            onAddressBlur={() => handleAddressBlur(form, setForm, setGeocoding)}
+          />
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <button onClick={() => setShowModal(false)} style={{ ...actionBtn, padding: '9px 18px', fontSize: '13px' }}>
+              キャンセル
+            </button>
+            <button onClick={handleAdd} disabled={saving} style={greenBtn}>
+              {saving ? '保存中...' : '登録する'}
+            </button>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
