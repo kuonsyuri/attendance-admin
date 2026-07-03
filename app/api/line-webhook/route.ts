@@ -1,38 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
+import { verifyWebhookSignature, getLineProfile } from '@/lib/line';
 
 // サーバーサイド専用Supabaseクライアント
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
-
-// LINE署名検証（HMAC-SHA256 Base64 — プレフィックスなし）
-function verifySignature(rawBody: string, signature: string, secret: string): boolean {
-  const hash = crypto.createHmac('sha256', secret).update(rawBody).digest('base64');
-  return hash === signature;
-}
-
-// LINEプロフィール取得
-async function fetchLineProfile(
-  userId: string,
-  accessToken: string
-): Promise<{ displayName: string; pictureUrl: string | null }> {
-  try {
-    const res = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) return { displayName: 'LINEユーザー', pictureUrl: null };
-    const data = await res.json();
-    return {
-      displayName: (data.displayName as string) || 'LINEユーザー',
-      pictureUrl: (data.pictureUrl as string) || null,
-    };
-  } catch {
-    return { displayName: 'LINEユーザー', pictureUrl: null };
-  }
-}
 
 export async function POST(req: NextRequest) {
   const channelSecret = process.env.LINE_CHANNEL_SECRET;
@@ -45,7 +19,7 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get('x-line-signature') || '';
 
-  if (!verifySignature(rawBody, signature, channelSecret)) {
+  if (!verifyWebhookSignature(rawBody, signature, channelSecret)) {
     console.warn('LINE webhook: 署名検証失敗');
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
@@ -65,9 +39,7 @@ export async function POST(req: NextRequest) {
 
     if (event.type === 'follow') {
       // 友達追加 → pending_staffにupsert
-      const { displayName, pictureUrl } = accessToken
-        ? await fetchLineProfile(lineUserId, accessToken)
-        : { displayName: 'LINEユーザー', pictureUrl: null };
+      const { displayName, pictureUrl } = await getLineProfile(lineUserId, accessToken);
 
       const { error } = await supabase.from('pending_staff').upsert(
         {

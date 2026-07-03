@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getLineProfile } from '@/lib/line';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,26 +34,6 @@ async function fetchAllFollowerIds(accessToken: string): Promise<string[]> {
   return ids;
 }
 
-// LINEプロフィールを取得
-async function fetchProfile(
-  userId: string,
-  accessToken: string
-): Promise<{ displayName: string; pictureUrl: string | null }> {
-  try {
-    const res = await fetch(`https://api.line.me/v2/bot/profile/${userId}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!res.ok) return { displayName: 'LINEユーザー', pictureUrl: null };
-    const data = await res.json();
-    return {
-      displayName: (data.displayName as string) || 'LINEユーザー',
-      pictureUrl:  (data.pictureUrl  as string) || null,
-    };
-  } catch {
-    return { displayName: 'LINEユーザー', pictureUrl: null };
-  }
-}
-
 export async function POST() {
   // 認証は middleware（セッションCookie）が保証。
   const accessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
@@ -79,7 +60,7 @@ export async function POST() {
   for (const userId of followerIds) {
     if (existingIds.has(userId)) continue;
 
-    const { displayName, pictureUrl } = await fetchProfile(userId, accessToken);
+    const { displayName, pictureUrl } = await getLineProfile(userId, accessToken);
 
     const { error } = await supabase.from('pending_staff').upsert(
       {

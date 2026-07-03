@@ -4,7 +4,8 @@ import { verifySessionToken, SESSION_COOKIE } from '@/lib/auth';
 // 認証不要の公開エンドポイント
 // - login/logout: セッション発行・破棄
 // - line-webhook: 外部(LINE)からのPOST。独自のHMAC署名検証を持つ
-const PUBLIC_API = ['/api/login', '/api/logout', '/api/line-webhook'];
+// - line-notify: スタッフアプリ(LIFF)からのPOST。LIFF IDトークン検証を持つ
+const PUBLIC_API = ['/api/login', '/api/logout', '/api/line-webhook', '/api/line-notify'];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
