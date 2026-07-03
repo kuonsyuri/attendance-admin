@@ -6,6 +6,7 @@ import EditAttendanceModal from './EditAttendanceModal';
 import { DatePick, toISO, fromDate } from '@/lib/dateUtils';
 import { AREAS, PREFECTURE_TO_AREA } from '@/lib/geo';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { ErrorBanner, collectErrors } from '@/components/ui/ErrorBanner';
 
 // ── スタイル ─────────────────────────────────────────────
 const card: React.CSSProperties = { background: '#fff', border: '1px solid #e8e8e4', borderRadius: '12px', overflow: 'hidden' };
@@ -112,10 +113,11 @@ export default function AttendancePage() {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [editGroup, setEditGroup] = useState<DayGroup | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [{ data: storeData }, { data: logData }] = await Promise.all([
+    const [storeRes, logRes] = await Promise.all([
       supabase.from('stores').select('*').order('name'),
       supabase
         .from('attendance_logs')
@@ -124,8 +126,9 @@ export default function AttendancePage() {
         .lte('punched_at', toISO(dateTo, true))
         .order('punched_at', { ascending: false }),
     ]);
-    setStoreList((storeData as Store[]) || []);
-    setLogs((logData as AttendanceLog[]) || []);
+    setLoadError(collectErrors(storeRes, logRes));
+    setStoreList((storeRes.data as Store[]) || []);
+    setLogs((logRes.data as AttendanceLog[]) || []);
     setLoading(false);
   }, [dateFrom, dateTo]);
 
@@ -174,8 +177,12 @@ export default function AttendancePage() {
   const handleConfirm = async (g: DayGroup) => {
     if (!g.reportLog || g.reportStatus === 'checked') return;
     setUpdatingId(g.reportLog.id);
-    await supabase.from('attendance_logs').update({ report_status: 'checked' }).eq('id', g.reportLog.id);
-    setLogs(prev => prev.map(l => l.id === g.reportLog!.id ? { ...l, report_status: 'checked' } : l));
+    const { error } = await supabase.from('attendance_logs').update({ report_status: 'checked' }).eq('id', g.reportLog.id);
+    if (error) {
+      alert('確認済みへの更新に失敗しました: ' + error.message);
+    } else {
+      setLogs(prev => prev.map(l => l.id === g.reportLog!.id ? { ...l, report_status: 'checked' } : l));
+    }
     setUpdatingId(null);
   };
 
@@ -189,6 +196,8 @@ export default function AttendancePage() {
         <h1 style={{ fontSize: '20px', fontWeight: 500 }}>出退勤ログ</h1>
         <p style={{ fontSize: '13px', color: '#888', marginTop: '4px' }}>期間・店舗・スタッフで絞り込み、日報を確認できます</p>
       </div>
+
+      {loadError && <ErrorBanner message={loadError} onRetry={fetchData} />}
 
       {/* 検索バー */}
       <div style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '12px', padding: '16px 20px', marginBottom: '16px' }}>

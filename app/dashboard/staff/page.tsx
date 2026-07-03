@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase, Staff, PendingStaff, Store } from '@/lib/supabase';
+import { ErrorBanner, collectErrors } from '@/components/ui/ErrorBanner';
 
 // ── 定数 ────────────────────────────────────────────────
 const ROLES = ['オペレーター（施術者）', 'チーフ（店長候補）', '店長', 'エリアマネージャー', '本部スタッフ'];
@@ -58,6 +59,7 @@ export default function StaffPage() {
   const [filterAdopted, setFilterAdopted] = useState('');
 
   const [deleteMode,  setDeleteMode]  = useState(false);
+  const [loadError,   setLoadError]   = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const [expansion, setExpansion] = useState<Expansion>(null);
@@ -77,7 +79,7 @@ export default function StaffPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [{ data: sData }, { data: pData }, { data: stData }, { data: adoptData }] = await Promise.all([
+    const [sRes, pRes, stRes, adoptRes] = await Promise.all([
       supabase.from('staff').select('*, staff_stores(*, stores(*))').order('name'),
       // status='pending' のみ表示
       supabase.from('pending_staff').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
@@ -85,11 +87,12 @@ export default function StaffPage() {
       // Phase 9で採用(is_adopted)を廃止 → 確認済み日報数で集計
       supabase.from('attendance_logs').select('staff_id').eq('report_status', 'checked'),
     ]);
-    setStaffList((sData as Staff[]) || []);
-    setPendingList((pData as PendingStaff[]) || []);
-    setStoreList((stData as Store[]) || []);
+    setLoadError(collectErrors(sRes, pRes, stRes, adoptRes));
+    setStaffList((sRes.data as Staff[]) || []);
+    setPendingList((pRes.data as PendingStaff[]) || []);
+    setStoreList((stRes.data as Store[]) || []);
     const counts = new Map<number, number>();
-    for (const row of (adoptData || []) as { staff_id: number }[])
+    for (const row of (adoptRes.data || []) as { staff_id: number }[])
       counts.set(row.staff_id, (counts.get(row.staff_id) || 0) + 1);
     setAdoptCounts(counts);
     setLoading(false);
@@ -155,14 +158,25 @@ export default function StaffPage() {
     if (!editForm.name) return alert('名前は必須です');
     setSaving(true);
     const hiredAt = editForm.hiredYear ? `${editForm.hiredYear}-04-01` : null;
-    await supabase.from('staff').update({
+    const errors: string[] = [];
+    const upd = await supabase.from('staff').update({
       name: editForm.name, role: editForm.role,
       hired_at: hiredAt, memo: editForm.memo,
     }).eq('id', staffId);
-    await supabase.from('staff_stores').delete().eq('staff_id', staffId);
-    for (const sid of editForm.storeIds)
-      await supabase.from('staff_stores').insert({ staff_id: staffId, store_id: sid });
-    setSaving(false); setExpansion(null); await fetchData();
+    if (upd.error) errors.push('基本情報: ' + upd.error.message);
+    const del = await supabase.from('staff_stores').delete().eq('staff_id', staffId);
+    if (del.error) errors.push('所属クリア: ' + del.error.message);
+    for (const sid of editForm.storeIds) {
+      const ins = await supabase.from('staff_stores').insert({ staff_id: staffId, store_id: sid });
+      if (ins.error) errors.push(`所属(store_id=${sid}): ` + ins.error.message);
+    }
+    setSaving(false);
+    if (errors.length > 0) {
+      alert('保存に失敗した項目があります:\n' + errors.join('\n'));
+    } else {
+      setExpansion(null);
+    }
+    await fetchData();
   };
 
   // ── 手動登録 ─────────────────────────────────────────────
@@ -174,9 +188,14 @@ export default function StaffPage() {
       .insert({ name: addForm.name, role: addForm.role, memo: addForm.memo })
       .select('id').single();
     if (error || !data) { setSaving(false); return alert('登録に失敗しました: ' + (error?.message || '')); }
-    for (const sid of addForm.storeIds)
-      await supabase.from('staff_stores').insert({ staff_id: data.id, store_id: sid });
-    setSaving(false); setShowAdd(false); setAddForm({ name: '', role: '', storeIds: [], memo: '' }); await fetchData();
+    const ssErrors: string[] = [];
+    for (const sid of addForm.storeIds) {
+      const ins = await supabase.from('staff_stores').insert({ staff_id: data.id, store_id: sid });
+      if (ins.error) ssErrors.push(`store_id=${sid}: ` + ins.error.message);
+    }
+    setSaving(false);
+    if (ssErrors.length > 0) alert('スタッフは登録されましたが、所属店舗の一部登録に失敗しました:\n' + ssErrors.join('\n'));
+    setShowAdd(false); setAddForm({ name: '', role: '', storeIds: [], memo: '' }); await fetchData();
   };
 
   // ── LINE申請：承認モーダルを開く ──────────────────────────
@@ -224,11 +243,15 @@ export default function StaffPage() {
     }
 
     // 3. staff_storesに全選択店舗を登録
-    await Promise.all(
+    const ssResults = await Promise.all(
       storeIds.map(sid =>
         supabase.from('staff_stores').insert({ staff_id: newStaff.id, store_id: sid })
       )
     );
+    const ssErrs = ssResults.filter(r => r.error).map(r => r.error!.message);
+    if (ssErrs.length > 0) {
+      alert('承認は完了しましたが、所属店舗の一部登録に失敗しました:\n' + Array.from(new Set(ssErrs)).join('\n'));
+    }
 
     // 4. pending_staffのstatusをapprovedに更新
     await supabase.from('pending_staff')
@@ -294,6 +317,8 @@ export default function StaffPage() {
           {deleteMode && <button onClick={toggleDeleteMode} style={btnBase}>キャンセル</button>}
         </div>
       </div>
+
+      {loadError && <ErrorBanner message={loadError} onRetry={fetchData} />}
 
       {/* タブ */}
       <div style={{ display: 'flex', gap: '2px', marginBottom: '16px', borderBottom: '1px solid #e8e8e4' }}>

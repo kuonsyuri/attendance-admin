@@ -5,6 +5,7 @@ import { supabase, AttendanceLog, Store } from '@/lib/supabase';
 import { ReportTypeDef, loadReportSchema } from '@/lib/reportSchema';
 import { DatePick, toISO, fromDate } from '@/lib/dateUtils';
 import { DatePicker } from '@/components/ui/DatePicker';
+import { ErrorBanner, collectErrors } from '@/components/ui/ErrorBanner';
 import ReportSchemaEditor from './ReportSchemaEditor';
 import ReportFormPreview from './ReportFormPreview';
 
@@ -134,6 +135,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'schema' | 'preview'>('schema');
   const [reportSchema, setReportSchema] = useState<ReportTypeDef[] | null>(null);
@@ -147,7 +149,7 @@ export default function ReportsPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [{ data: storeData }, { data: logData }] = await Promise.all([
+    const [storeRes, logRes] = await Promise.all([
       supabase.from('stores').select('*').order('name'),
       supabase
         .from('attendance_logs')
@@ -157,8 +159,9 @@ export default function ReportsPage() {
         .not('report_type', 'is', null)
         .order('punched_at', { ascending: false }),
     ]);
-    setStoreList((storeData as Store[]) || []);
-    setLogs((logData as AttendanceLog[]) || []);
+    setLoadError(collectErrors(storeRes, logRes));
+    setStoreList((storeRes.data as Store[]) || []);
+    setLogs((logRes.data as AttendanceLog[]) || []);
     setLoading(false);
   }, [dateFrom, dateTo]);
 
@@ -193,8 +196,12 @@ export default function ReportsPage() {
   const handleConfirm = async (log: AttendanceLog) => {
     if (getStatus(log) !== 'unread') return;
     setUpdatingId(log.id);
-    await supabase.from('attendance_logs').update({ report_status: 'checked' }).eq('id', log.id);
-    setLogs(prev => prev.map(l => l.id === log.id ? { ...l, report_status: 'checked' } : l));
+    const { error } = await supabase.from('attendance_logs').update({ report_status: 'checked' }).eq('id', log.id);
+    if (error) {
+      alert('確認済みへの更新に失敗しました: ' + error.message);
+    } else {
+      setLogs(prev => prev.map(l => l.id === log.id ? { ...l, report_status: 'checked' } : l));
+    }
     setUpdatingId(null);
   };
 
@@ -229,6 +236,8 @@ export default function ReportsPage() {
           </button>
         </div>
       </div>
+
+      {loadError && <div className="no-print"><ErrorBanner message={loadError} onRetry={fetchData} /></div>}
 
       {/* 内部設定: 日報構成（現状表示）モーダル */}
       {showSettings && (
