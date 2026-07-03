@@ -330,12 +330,14 @@ export default function AttendancePage() {
                               {/* 毎日実績（全種別共通） */}
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: g.reportLog?.report_type === 'review' ? '10px' : '0' }}>
                                 {[
-                                  { label: '新規コース', value: g.reportLog?.fact_new_course },
+                                  { label: '新規接客', value: g.reportLog?.fact_new_customers },
+                                  { label: 'チケット29,800', value: g.reportLog?.fact_ticket_29800 },
+                                  ...(g.reportLog?.fact_new_course != null ? [{ label: '新規コース（旧）', value: g.reportLog.fact_new_course as number | string | null }] : []),
                                   { label: 'サブスク15', value: g.reportLog?.fact_sub_15 },
                                   { label: 'サブスク13', value: g.reportLog?.fact_sub_13 },
                                   { label: 'サブスク11', value: g.reportLog?.fact_sub_11 },
-                                  { label: '既存顧客', value: g.reportLog?.fact_existing_customers },
-                                  { label: '店販', value: g.reportLog?.fact_shop_sales },
+                                  { label: '既存接客', value: g.reportLog?.fact_existing_customers },
+                                  { label: '店販販売', value: g.reportLog?.fact_shop_sales },
                                   { label: '総売上', value: g.reportLog?.fact_total_revenue != null ? `¥${g.reportLog.fact_total_revenue.toLocaleString('ja-JP')}` : null },
                                 ].map(({ label, value }) => (
                                   <div key={label} style={{ background: '#fff', border: '1px solid #e8e8e4', borderRadius: '8px', padding: '8px 10px' }}>

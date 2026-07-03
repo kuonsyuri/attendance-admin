@@ -62,13 +62,22 @@ export type AttendanceLog = {
   // Phase 9: 新日報形式
   report_type?: 'daily' | 'review' | 'goal' | null;
   // 毎日実績
+  /** @deprecated 日報v2で fact_ticket_29800 に置換。履歴表示用に残置。 */
   fact_new_course?: number | null;
+  fact_new_customers?: number | null;
+  fact_ticket_29800?: number | null;
   fact_sub_15?: number | null;
   fact_sub_13?: number | null;
   fact_sub_11?: number | null;
   fact_existing_customers?: number | null;
   fact_shop_sales?: number | null;
   fact_total_revenue?: number | null;
+  // 新規の振り返り・改善アイデア（日報v2・任意）
+  dr_deal_factor?: string | null;
+  dr_counseling_improve?: string | null;
+  dr_progress?: string | null;
+  dr_issue?: string | null;
+  dr_improve_idea?: string | null;
   // 振り返り
   review_good_1?: string | null;
   review_good_2?: string | null;

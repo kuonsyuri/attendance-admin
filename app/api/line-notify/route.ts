@@ -21,13 +21,21 @@ export async function OPTIONS() {
 type NotifyEvent = 'clock_in' | 'clock_out' | 'meeting_start' | 'meeting_end';
 
 type ReportPayload = {
+  /** @deprecated 日報v2で fact_ticket_29800 に置換（移行期の旧アプリ互換用） */
   fact_new_course?: number | null;
+  fact_new_customers?: number | null;
+  fact_ticket_29800?: number | null;
   fact_sub_15?: number | null;
   fact_sub_13?: number | null;
   fact_sub_11?: number | null;
   fact_existing_customers?: number | null;
   fact_shop_sales?: number | null;
   fact_total_revenue?: number | null;
+  dr_deal_factor?: string | null;
+  dr_counseling_improve?: string | null;
+  dr_progress?: string | null;
+  dr_issue?: string | null;
+  dr_improve_idea?: string | null;
   review_good_1?: string | null;
   review_good_2?: string | null;
   review_good_3?: string | null;
@@ -50,12 +58,38 @@ function buildReportBlock(r: ReportPayload): string {
   const lines: string[] = [
     '',
     '📊 本日の実績',
-    `・新規コース契約：${n(r.fact_new_course)}件`,
+    `・新規顧客接客：${n(r.fact_new_customers)}件`,
+    `・新規チケット契約（29,800円）：${n(r.fact_ticket_29800)}件`,
+    // 旧アプリからの送信（移行期）のみ表示
+    ...(r.fact_new_course != null ? [`・新規コース契約（旧）：${r.fact_new_course}件`] : []),
     `・新規サブスク契約：${subTotal}件（15,000:${n(r.fact_sub_15)}／13,000:${n(r.fact_sub_13)}／11,000:${n(r.fact_sub_11)}）`,
     `・既存顧客接客：${n(r.fact_existing_customers)}件`,
     `・店販販売：${n(r.fact_shop_sales)}件`,
     `・個人総売上：¥${n(r.fact_total_revenue).toLocaleString('ja-JP')}`,
   ];
+
+  const drNotes: Array<[string, string | null | undefined]> = [
+    ['成約・未成約の要因', r.dr_deal_factor],
+    ['カウンセリング改善点', r.dr_counseling_improve],
+    ['本日の前進', r.dr_progress],
+  ];
+  if (drNotes.some(([, v]) => v && v.trim())) {
+    lines.push('', '💬 新規の振り返り');
+    for (const [label, v] of drNotes) {
+      if (v && v.trim()) lines.push(`・${label}：${v.trim()}`);
+    }
+  }
+
+  const ideas: Array<[string, string | null | undefined]> = [
+    ['課題・気づき', r.dr_issue],
+    ['改善アイデア', r.dr_improve_idea],
+  ];
+  if (ideas.some(([, v]) => v && v.trim())) {
+    lines.push('', '💡 改善アイデア（給与UP対象）');
+    for (const [label, v] of ideas) {
+      if (v && v.trim()) lines.push(`・${label}：${v.trim()}`);
+    }
+  }
 
   const reviews: Array<[string, string | null | undefined]> = [
     ['上手くできたこと①', r.review_good_1],

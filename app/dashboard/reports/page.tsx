@@ -57,7 +57,11 @@ function DailyFactTable({ log }: { log: AttendanceLog }) {
       <div style={{ fontSize: '11px', fontWeight: 600, color: '#3B6D11', marginBottom: '6px', letterSpacing: '0.05em' }}>TODAY&apos;S FACT</div>
       <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '12px' }}>
         <tbody>
-          <tr><td style={detailCell}>新規コース契約</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_new_course ?? 0} 件</td></tr>
+          <tr><td style={detailCell}>新規顧客接客</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_new_customers ?? 0} 件</td></tr>
+          <tr><td style={detailCell}>新規チケット契約（29,800円）</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_ticket_29800 ?? 0} 件</td></tr>
+          {log.fact_new_course != null && (
+            <tr><td style={detailCell}>新規コース契約（旧項目）</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_new_course} 件</td></tr>
+          )}
           <tr>
             <td style={detailCell}>新規サブスク（合計）</td>
             <td style={{ ...detailCell, fontWeight: 600 }}>{subTotal} 件
@@ -66,11 +70,52 @@ function DailyFactTable({ log }: { log: AttendanceLog }) {
               </span>
             </td>
           </tr>
-          <tr><td style={detailCell}>既存顧客来店</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_existing_customers ?? 0} 件</td></tr>
-          <tr><td style={detailCell}>店販購入</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_shop_sales ?? 0} 件</td></tr>
+          <tr><td style={detailCell}>既存顧客接客</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_existing_customers ?? 0} 件</td></tr>
+          <tr><td style={detailCell}>店販販売</td><td style={{ ...detailCell, fontWeight: 600 }}>{log.fact_shop_sales ?? 0} 件</td></tr>
           <tr><td style={detailCell}>個人総売上</td><td style={{ ...detailCell, fontWeight: 600 }}>{(log.fact_total_revenue ?? 0).toLocaleString('ja-JP')} 円</td></tr>
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── 新規の振り返り・改善アイデア（日報v2・記入時のみ表示） ──
+function DrNotesBlock({ log }: { log: AttendanceLog }) {
+  const reflection: Array<[string, string | null | undefined]> = [
+    ['本日の成約・未成約の要因', log.dr_deal_factor],
+    ['次回へのカウンセリング改善点', log.dr_counseling_improve],
+    ['本日上手くできたこと（1つ）', log.dr_progress],
+  ];
+  const ideas: Array<[string, string | null | undefined]> = [
+    ['現場の課題・アイデア・気づき', log.dr_issue],
+    ['私なりの改善アイデア', log.dr_improve_idea],
+  ];
+  const hasReflection = reflection.some(([, v]) => v);
+  const hasIdeas = ideas.some(([, v]) => v);
+  if (!hasReflection && !hasIdeas) return null;
+
+  const renderItems = (items: Array<[string, string | null | undefined]>) =>
+    items.filter(([, v]) => v).map(([label, v]) => (
+      <div key={label} style={{ marginBottom: '8px', background: '#fff', border: '1px solid #e8e8e4', borderRadius: '7px', padding: '8px 12px' }}>
+        <div style={{ fontSize: '10px', color: '#888', marginBottom: '3px', fontWeight: 600 }}>{label}</div>
+        <div style={{ fontSize: '13px', color: '#1a1a1a', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{v}</div>
+      </div>
+    ));
+
+  return (
+    <div style={{ marginBottom: '14px' }}>
+      {hasReflection && (
+        <>
+          <div style={{ fontSize: '11px', fontWeight: 600, color: '#b45309', margin: '10px 0 6px', letterSpacing: '0.05em' }}>新規の振り返り</div>
+          {renderItems(reflection)}
+        </>
+      )}
+      {hasIdeas && (
+        <>
+          <div style={{ fontSize: '11px', fontWeight: 600, color: '#0f766e', margin: '10px 0 6px', letterSpacing: '0.05em' }}>改善アイデア（給与UP対象）</div>
+          {renderItems(ideas)}
+        </>
+      )}
     </div>
   );
 }
@@ -342,6 +387,9 @@ export default function ReportsPage() {
                           {/* 毎日実績（全種別共通） */}
                           <DailyFactTable log={log} />
 
+                          {/* 新規の振り返り・改善アイデア（記入時のみ） */}
+                          <DrNotesBlock log={log} />
+
                           {/* 振り返り（review種別 or 振り返りデータが存在する場合） */}
                           {(log.report_type === 'review' || log.review_good_1 || log.review_good_2 || log.review_good_3 || log.review_obstacle || log.review_question || log.review_action_plan) && (
                             <div style={{ marginBottom: '14px' }}>
@@ -413,7 +461,7 @@ export default function ReportsPage() {
                   <span>{REPORT_TYPE_CONFIG[log.report_type as keyof typeof REPORT_TYPE_CONFIG]?.label ?? '毎日実績'}</span>
                 </div>
                 <div className="print-report" style={{ fontSize: '12px', lineHeight: 1.8 }}>
-                  <strong>新規コース:{log.fact_new_course ?? 0}件 サブスク:{subTotal}件 既存:{log.fact_existing_customers ?? 0}件 店販:{log.fact_shop_sales ?? 0}件 売上:{(log.fact_total_revenue ?? 0).toLocaleString('ja-JP')}円</strong>
+                  <strong>新規接客:{log.fact_new_customers ?? 0}件 チケット:{log.fact_ticket_29800 ?? 0}件 サブスク:{subTotal}件 既存:{log.fact_existing_customers ?? 0}件 店販:{log.fact_shop_sales ?? 0}件 売上:{(log.fact_total_revenue ?? 0).toLocaleString('ja-JP')}円{log.fact_new_course != null ? ` 旧コース:${log.fact_new_course}件` : ''}</strong>
                 </div>
                 {log.report_type === 'review' && (
                   <div style={{ marginTop: '8px', fontSize: '12px', lineHeight: 1.8 }}>
