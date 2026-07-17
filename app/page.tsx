@@ -45,6 +45,7 @@ const S = {
 
 export default function LoginPage() {
   const router = useRouter();
+  const [staffId, setStaffId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -57,7 +58,7 @@ export default function LoginPage() {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ staffId, password }),
       });
       if (res.ok) {
         router.push('/dashboard/attendance');
@@ -79,11 +80,17 @@ export default function LoginPage() {
         <p style={S.logo}>ELAN MARIRE</p>
         <h1 style={S.title}>管理ダッシュボード</h1>
         <form onSubmit={handleSubmit}>
+          <label style={S.label}>スタッフID</label>
+          <input
+            style={{ ...S.input, marginBottom: '16px' }} type="text" inputMode="numeric" value={staffId}
+            onChange={(e) => setStaffId(e.target.value)}
+            placeholder="例：7（本部・店舗責任者のみ）" autoFocus
+          />
           <label style={S.label}>パスワード</label>
           <input
             style={S.input} type="password" value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="パスワードを入力" autoFocus required
+            placeholder="パスワードを入力" required
           />
           {error && <p style={S.error}>{error}</p>}
           <button

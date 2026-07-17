@@ -37,28 +37,45 @@ function timingSafeEqual(a: string, b: string): boolean {
   return r === 0;
 }
 
-/** ログインPWの検証（サーバ専用値と照合） */
-export function verifyPassword(input: string): boolean {
+/** 移行期の共有PWフォールバック検証（A2-5で撤去予定） */
+export function verifyLegacyPassword(input: string): boolean {
   const pw = appPassword();
   return pw.length > 0 && timingSafeEqual(input, pw);
 }
 
-/** 署名付きセッショントークンを発行（`{exp}.{hmac}`） */
-export async function createSessionToken(): Promise<string> {
-  const exp = Date.now() + SESSION_TTL_MS;
-  const sig = await hmacHex(String(exp), authSecret());
-  return `${exp}.${sig}`;
+// ── セッション（主体＋role を署名付きで保持） ──────────────────
+export type AppRole = 'admin' | 'manager';
+export type SessionPayload = { sub: number | null; role: AppRole; exp: number };
+
+function b64urlEncode(s: string): string {
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlDecode(s: string): string {
+  let t = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (t.length % 4) t += '=';
+  return atob(t);
 }
 
-/** セッショントークンの検証（署名一致＋未失効） */
-export async function verifySessionToken(token: string | undefined | null): Promise<boolean> {
-  if (!token) return false;
-  const dot = token.indexOf('.');
-  if (dot < 0) return false;
-  const expStr = token.slice(0, dot);
+/** 署名付きセッショントークンを発行（`base64url({sub,role,exp}).hmac`） */
+export async function createSessionToken(input: { sub: number | null; role: AppRole }): Promise<string> {
+  const body: SessionPayload = { sub: input.sub, role: input.role, exp: Date.now() + SESSION_TTL_MS };
+  const p = b64urlEncode(JSON.stringify(body));
+  const sig = await hmacHex(p, authSecret());
+  return `${p}.${sig}`;
+}
+
+/** セッショントークンの検証（署名一致＋未失効）。有効なら payload、無効なら null。 */
+export async function verifySessionToken(token: string | undefined | null): Promise<SessionPayload | null> {
+  if (!token) return null;
+  const dot = token.lastIndexOf('.');
+  if (dot < 0) return null;
+  const p = token.slice(0, dot);
   const sig = token.slice(dot + 1);
-  const exp = Number(expStr);
-  if (!Number.isFinite(exp) || exp < Date.now()) return false;
-  const expected = await hmacHex(expStr, authSecret());
-  return timingSafeEqual(sig, expected);
+  const expected = await hmacHex(p, authSecret());
+  if (!timingSafeEqual(sig, expected)) return null;
+  let body: SessionPayload;
+  try { body = JSON.parse(b64urlDecode(p)); } catch { return null; }
+  if (!body || typeof body.exp !== 'number' || body.exp < Date.now()) return null;
+  if (body.role !== 'admin' && body.role !== 'manager') return null;
+  return body;
 }
