@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 
@@ -9,11 +10,23 @@ const navItems = [
   { href: '/dashboard/reports', label: '日報', icon: '📝' },
   { href: '/dashboard/staff', label: 'スタッフ管理', icon: '👥' },
   { href: '/dashboard/stores', label: '店舗管理', icon: '🏪' },
+  { href: '/dashboard/account', label: 'アカウント', icon: '🔑' },
 ];
+
+type Me = { sub: number | null; role: 'admin' | 'manager'; name: string };
+const ROLE_LABEL: Record<Me['role'], string> = { admin: '本部スタッフ', manager: '店舗責任者' };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [me, setMe] = useState<Me | null>(null);
+
+  useEffect(() => {
+    fetch('/api/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: Me | null) => setMe(d))
+      .catch(() => setMe(null));
+  }, []);
 
   // 認証は middleware（httpOnly Cookieセッション）が保証するため、
   // クライアント側のガードは不要。
@@ -64,6 +77,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         <div style={{ padding: '12px 16px', borderTop: '1px solid #e8e8e4' }}>
+          {me && (
+            <div style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '12px', color: '#1a1a1a', fontWeight: 500 }}>{me.name}</div>
+              <div style={{ fontSize: '10px', color: '#999', marginTop: '1px' }}>{ROLE_LABEL[me.role]}</div>
+            </div>
+          )}
           <button
             onClick={handleLogout}
             style={{
